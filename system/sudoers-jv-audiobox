@@ -1,0 +1,7 @@
+jv ALL=(root) NOPASSWD: /opt/jv/system/mount-nas.sh
+jv ALL=(root) NOPASSWD: /opt/jv/system/umount-nas.sh
+jv ALL=(root) NOPASSWD: /opt/jv/system/bt-pair.sh
+jv ALL=(root) NOPASSWD: /sbin/reboot
+jv ALL=(root) NOPASSWD: /sbin/shutdown
+jv ALL=(root) NOPASSWD: /bin/systemctl restart jv-backend
+jv ALL=(root) NOPASSWD: /opt/jv/system/update-ytdlp.sh

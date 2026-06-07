@@ -1,0 +1,38 @@
+[Unit]
+Description=AudioBox Kiosk (Chromium fullscreen)
+After=jv-backend.service graphical.target
+Requires=graphical.target
+
+[Service]
+Type=simple
+User=jv
+Group=jv
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/jv/.Xauthority
+Environment=HOME=/home/jv
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+
+# Attendre que le backend et X soient prêts
+ExecStartPre=/bin/sleep 8
+ExecStartPre=/bin/bash -c 'until curl -sf http://localhost:8000/ > /dev/null 2>&1; do sleep 2; done'
+
+ExecStart=/bin/bash -c '\
+  CHROMIUM=$(command -v chromium || command -v chromium-browser || echo chromium); \
+  $CHROMIUM \
+    --kiosk \
+    --noerrdialogs \
+    --disable-infobars \
+    --disable-session-crashed-bubble \
+    --disable-restore-session-state \
+    --disable-pinch \
+    --touch-events=enabled \
+    --no-first-run \
+    --disable-translate \
+    --check-for-update-interval=31536000 \
+    --app=http://localhost:8000'
+
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=graphical.target

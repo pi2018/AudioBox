@@ -1,0 +1,38 @@
+[Unit]
+Description=AudioBox Backend (FastAPI + uvicorn)
+After=network.target bluetooth.service sound.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=jv
+Group=jv
+WorkingDirectory=/opt/jv/backend
+Environment=PYTHONUNBUFFERED=1
+Environment=HOME=/home/jv
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+Environment=PIPEWIRE_RUNTIME_DIR=/run/user/1000
+
+ExecStartPre=/bin/sleep 2
+
+ExecStart=/opt/jv/venv/bin/uvicorn main:app \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --workers 1 \
+    --log-level info \
+    --timeout-keep-alive 30
+
+Restart=on-failure
+RestartSec=5
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=jv-backend
+
+NoNewPrivileges=false
+ProtectSystem=false
+PrivateTmp=false
+
+[Install]
+WantedBy=multi-user.target

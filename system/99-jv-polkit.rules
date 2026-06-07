@@ -1,0 +1,24 @@
+// Règles polkit AudioBox
+// Permet à l'utilisateur 'jv' d'exécuter uniquement les scripts
+// système spécifiques sans authentification interactive.
+// Ces scripts sont propriété root, chmod 700, non modifiables par jv.
+
+polkit.addRule(function(action, subject) {
+    var ALLOWED_PROGRAMS = [
+        "/opt/jv/system/mount-nas.sh",
+        "/opt/jv/system/umount-nas.sh",
+        "/opt/jv/system/bt-pair.sh"
+    ];
+
+    if (action.id === "org.freedesktop.policykit.exec" &&
+        subject.user === "jv") {
+
+        var prog = action.lookup("program");
+        for (var i = 0; i < ALLOWED_PROGRAMS.length; i++) {
+            if (prog === ALLOWED_PROGRAMS[i]) {
+                return polkit.Result.YES;
+            }
+        }
+    }
+    return polkit.Result.NOT_HANDLED;
+});

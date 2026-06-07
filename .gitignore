@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+config/
+.secret.key
+.dashboard_token
+config.json
+nas/
+venv/
+*.log
