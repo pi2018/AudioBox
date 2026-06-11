@@ -291,6 +291,74 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
 .bt-device-name{flex:1;font-size:13px;color:var(--txt)}
 .bt-device-addr{font-size:11px;color:var(--txt3)}
 .bt-connected{font-size:10px;padding:2px 7px;background:rgba(29,158,117,.15);color:var(--green);border-radius:10px}
+
+/* ══ MOBILE S23 ULTRA (393px) ═══════════════════════ */
+@media (max-width: 480px) {
+  :root { --sb: 0px }
+
+  /* Cacher la sidebar sur mobile */
+  #sidebar { display: none !important }
+
+  /* Topbar mobile */
+  #topbar { padding: 8px 14px }
+  #cw-top-desc { display: none }
+  #cw-top-hum { display: none }
+  #cw-top-wind { display: none }
+  #top-date { display: none }
+
+  /* Navigation mobile en bas */
+  #mobile-nav {
+    display: flex !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #0f0f18;
+    border-top: 0.5px solid rgba(255,255,255,0.08);
+    z-index: 100;
+    height: 56px;
+  }
+
+  /* Décaler le contenu pour la nav du bas */
+  #main { margin-bottom: 56px }
+  #player-bar { margin-bottom: 56px }
+
+  /* Screens padding mobile */
+  .screen { padding: 12px }
+
+  /* Accueil mobile */
+  .home-sources { grid-template-columns: repeat(2,1fr); gap: 10px }
+  .home-source { padding: 16px 10px; gap: 8px }
+  .home-source-icon { font-size: 28px }
+  .home-source-label { font-size: 13px }
+
+  /* Cards livres en cours */
+  .abs-prog-card { width: 130px }
+  .abs-prog-cover { width: 130px; height: 130px; min-height: 130px }
+
+  /* Page lecture mobile */
+  .player-volumio { flex-direction: column; align-items: center }
+  #pd-cover { width: 200px !important; height: 200px !important }
+  #pd-title { font-size: 18px !important; text-align: center }
+  #pd-author { text-align: center }
+
+  /* Barre lecture mobile */
+  #pb-main-row { padding: 6px 10px; gap: 8px }
+  #pb-cover { width: 38px; height: 38px }
+  #pb-title { font-size: 12px }
+  .pb-controls { gap: 2px }
+  .pb-btn { width: 34px; height: 34px; font-size: 18px }
+  #btn-playpause { width: 40px !important; height: 40px !important; font-size: 18px !important }
+
+  /* Grille livres mobile */
+  .books-grid { grid-template-columns: repeat(3, 1fr); gap: 8px }
+
+  /* Radios mobile */
+  .radios-grid { grid-template-columns: repeat(3,1fr) }
+
+  /* Paramètres mobile */
+  .settings-section { padding: 12px }
+}
 </style>
 </head>
 <body>
@@ -409,64 +477,51 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
 
       <!-- LECTURE LIVRE -->
       <div class="screen" id="screen-player">
-        <div style="display:flex;gap:20px;align-items:flex-start">
-          <div style="flex-shrink:0">
-            <div id="pd-cover" style="width:150px;height:150px;background:var(--bg3);border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:50px;box-shadow:0 4px 24px rgba(0,0,0,.5)">📚</div>
+        <div class="player-volumio">
+          <div class="pv-cover-wrap">
+            <div id="pd-cover">📚</div>
+            <div class="pv-source-badge" id="pv-source">Livre audio</div>
           </div>
-          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
-            <div id="pd-title" style="font-size:20px;font-weight:700;color:var(--txt);line-height:1.2"></div>
-            <div id="pd-series" style="font-size:12px;color:var(--acc2)"></div>
-            <div id="pd-author" style="font-size:13px;color:var(--txt3)"></div>
-            <div style="display:flex;flex-direction:column;gap:3px;margin-top:4px">
-              <div style="display:flex;gap:8px;font-size:12px">
-                <span style="color:var(--txt3);min-width:80px">Durée</span>
-                <span id="pd-dur-meta" style="color:var(--txt2)">—</span>
+          <div class="pv-right">
+            <div id="pd-title">—</div>
+            <div id="pd-author"></div>
+            <div id="pd-desc"></div>
+            <div class="pv-prog-wrap">
+              <div class="pv-prog-times">
+                <span id="pd-time-cur">0:00</span>
+                <span id="pd-pct">0%</span>
+                <span id="pd-time-dur">0:00</span>
               </div>
-              <div style="display:flex;gap:8px;font-size:12px">
-                <span style="color:var(--txt3);min-width:80px">Progression</span>
-                <span id="pd-pct" style="color:var(--acc2)">0%</span>
-
-              </div>
-            </div>
-            <div style="margin-top:6px">
-              <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-                <span id="pd-time-cur" style="font-size:11px;color:var(--txt3)">0:00</span>
-                <span id="pd-time-dur" style="font-size:11px;color:var(--txt3)">0:00</span>
-              </div>
-              <div class="pv-prog-track" onclick="seekToClick(event)" style="height:4px">
+              <div class="pv-prog-track" onclick="seekToClick(event)">
                 <div class="pv-prog-fill" id="pd-prog"></div>
               </div>
             </div>
-            <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
-              <div class="pv-source-badge" id="pv-source">Livre audio</div>
-              <button class="speed-btn" id="btn-chapters" onclick="loadChapters()">📑 Chapitres</button>
-              <button class="speed-btn" onclick="document.getElementById('sleep-extended').style.display=document.getElementById('sleep-extended').style.display=='none'?'block':'none'">💤 Sommeil</button>
+            <div class="pv-controls">
+              <button class="pv-btn" onclick="seekRel(-30)" title="-30s">⏪</button>
+              <button class="pv-btn" id="btn-stop" onclick="stopBook()" title="Stop">⏹</button>
+              <button class="pv-btn" id="btn-read" onclick="startBook()">▶</button>
+              <button class="pv-btn" onclick="seekRel(+30)" title="+30s">⏩</button>
             </div>
+            <div class="pv-vol-row">
+              <span class="pv-vol-icon">🔈</span>
+              <div class="pv-vol-track" id="pv-vol-track" onclick="seekToClickBar(event,true)" style="cursor:pointer">
+                <div class="pv-vol-fill" id="pv-vol-fill"></div>
+              </div>
+              <span class="pv-vol-icon">🔊</span>
+            </div>
+
+            <!-- Chapitres -->
+            <div id="chapters-wrap" style="margin-top:10px;display:none">
+              <div style="font-size:11px;color:var(--txt3);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">
+                <span>📑 Chapitres (<span id="chapters-count">0</span>)</span>
+                <button class="speed-btn" onclick="toggleChapters()">▲</button>
+              </div>
+              <div id="chapters-list" style="max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:4px"></div>
+            </div>
+
+
           </div>
         </div>
-        <div style="margin-top:14px;padding:12px;background:var(--bg1);border-radius:var(--rsm);border-left:3px solid var(--acc)">
-          <div id="pd-desc" style="font-size:12px;color:var(--txt2);line-height:1.6;max-height:80px;overflow-y:auto"></div>
-        </div>
-        <div id="chapters-wrap" style="display:none;margin-top:10px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <span style="font-size:12px;font-weight:500;color:var(--txt2)">📑 Chapitres (<span id="chapters-count">0</span>)</span>
-            <button class="speed-btn" onclick="toggleChapters()">▲ Fermer</button>
-          </div>
-          <div id="chapters-list" style="max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:4px"></div>
-        </div>
-        <div id="sleep-extended" style="display:none;margin-top:10px;padding:10px;background:var(--bg1);border-radius:var(--rsm)">
-          <div style="font-size:12px;color:var(--txt3);margin-bottom:8px">💤 Timer de sommeil</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="speed-btn" onclick="setSleepTimer(15)">15m</button>
-            <button class="speed-btn" onclick="setSleepTimer(30)">30m</button>
-            <button class="speed-btn" onclick="setSleepTimer(45)">45m</button>
-            <button class="speed-btn" onclick="setSleepTimer(60)">60m</button>
-            <button id="sleep-cancel" onclick="cancelSleepTimer()" style="display:none;background:var(--red);color:#fff;border:none;border-radius:20px;padding:4px 10px;font-size:11px;cursor:pointer">✕ <span id="sleep-countdown"></span></button>
-          </div>
-        </div>
-        <button id="btn-stop" onclick="stopBook()" style="display:none"></button>
-        <button id="btn-read" onclick="startBook()" style="display:none"></button>
-        <div id="pv-vol-track" style="display:none"><div id="pv-vol-fill"></div></div>
       </div>
 
       <!-- NAS -->
@@ -780,6 +835,27 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
     </div>
 
   </div><!-- /main -->
+
+  <!-- NAVIGATION MOBILE (cachée sur desktop) -->
+  <div id="mobile-nav" style="display:none">
+    <div style="display:flex;width:100%;align-items:stretch">
+      <button onclick="showScreen('home')" style="flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:#505070;font-size:10px;cursor:pointer;padding:4px 0" id="mnav-home">
+        <span style="font-size:20px">🏠</span><span>Accueil</span>
+      </button>
+      <button onclick="showScreen('abs')" style="flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:#505070;font-size:10px;cursor:pointer;padding:4px 0" id="mnav-abs">
+        <span style="font-size:20px">📚</span><span>Livres</span>
+      </button>
+      <button onclick="showScreen('radios')" style="flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:#505070;font-size:10px;cursor:pointer;padding:4px 0" id="mnav-radios">
+        <span style="font-size:20px">📻</span><span>Radio</span>
+      </button>
+      <button onclick="showScreen('youtube')" style="flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:#505070;font-size:10px;cursor:pointer;padding:4px 0" id="mnav-youtube">
+        <span style="font-size:20px">▶️</span><span>YouTube</span>
+      </button>
+      <button onclick="showScreen('settings')" style="flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:#505070;font-size:10px;cursor:pointer;padding:4px 0" id="mnav-settings">
+        <span style="font-size:20px">⚙️</span><span>Réglages</span>
+      </button>
+    </div>
+  </div>
 </div><!-- /app -->
 
 <!-- SCREENSAVER -->
@@ -809,19 +885,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
     <button class="sp-fine-btn" onclick="adjustSpeed(-0.05)">−</button>
     <div id="sp-current">1.0x</div>
     <button class="sp-fine-btn" onclick="adjustSpeed(+0.05)">+</button>
-  </div>
-</div>
-
-<!-- MODE VEILLE -->
-<div id="standby" onclick="exitStandby()" style="position:fixed;inset:0;background:#000;z-index:9998;display:none;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:20px">
-  <div id="sb-time" style="font-size:120px;font-weight:300;color:#f0f0f8;letter-spacing:-4px;line-height:1">00:00</div>
-  <div id="sb-date" style="font-size:20px;color:#606080;letter-spacing:1px">—</div>
-  <div style="display:flex;align-items:center;gap:16px;margin-top:20px">
-    <span id="sb-weather-icon" style="font-size:48px">🌤️</span>
-    <div style="display:flex;flex-direction:column;align-items:flex-start">
-      <span id="sb-weather-temp" style="font-size:36px;font-weight:300;color:#e0e0f0">—°</span>
-      <span id="sb-weather-desc" style="font-size:16px;color:#606080">—</span>
-    </div>
   </div>
 </div>
 
@@ -896,6 +959,18 @@ function showScreen(name) {
   const navBtn = document.getElementById('nav-' + name);
   if (navBtn) navBtn.classList.add('active');
 
+  // Mobile nav active state
+  document.querySelectorAll('[id^="mnav-"]').forEach(b => {
+    b.style.color = '#505070';
+  });
+  const mnavBtn = document.getElementById('mnav-' + name);
+  if (mnavBtn) mnavBtn.style.color = '#7c6af7';
+
+  // Effacer fond si on quitte la page lecture
+  if (name !== 'player') {
+    const bgEl = document.getElementById('player-bg');
+    if (bgEl) bgEl.classList.remove('active');
+  }
   if (name === 'home')      loadRecent();
   if (name === 'abs')       loadABS();
   if (name === 'radios')    loadRadios();
@@ -1165,31 +1240,22 @@ async function openBook(item) {
 
   document.getElementById('pd-title').textContent  = title;
   document.getElementById('pd-author').textContent = author;
-  const seriesEl = document.getElementById('pd-series');
-  if (seriesEl) seriesEl.textContent = item.media?.metadata?.seriesName || '';
-  document.getElementById('pd-desc').textContent = desc;
-  const durMeta = document.getElementById('pd-dur-meta');
-  if (durMeta) durMeta.textContent = fmtTime(dur);
-  const timeDur = document.getElementById('pd-time-dur');
-  if (timeDur) timeDur.textContent = fmtTime(dur);
-  const timeCur = document.getElementById('pd-time-cur');
-  if (timeCur) timeCur.textContent = fmtTime(prog);
-  // Mettre à jour la progression correctement
-  const realPct = item.userMediaProgress ? item.userMediaProgress.progress : 0;
-  const realPctRound = Math.round(realPct * 100);
-  const realPctEl = document.getElementById('pd-pct');
-  if (realPctEl) realPctEl.textContent = realPctRound + '%';
-  const pdProg = document.getElementById('pd-prog');
-  if (pdProg) pdProg.style.width = realPctRound + '%';
-  const realPos = item.userMediaProgress ? item.userMediaProgress.currentTime : 0;
-  const timeCurEl = document.getElementById('pd-time-cur');
-  if (timeCurEl) timeCurEl.textContent = fmtTime(realPos);
-  const _pctEl=document.getElementById('pd-pct');if(_pctEl)_pctEl.textContent=pct+'%';
+  // pd-series supprimé
+  document.getElementById('pd-desc').textContent   = desc;
+  document.getElementById('pd-time-dur').textContent = fmtTime(dur);
+  document.getElementById('pd-time-cur').textContent = fmtTime(prog);
+  document.getElementById('pd-pct').textContent = pct + '%';
   const _p=document.getElementById('pd-prog');if(_p)_p.style.width=pct+'%';
 
   // Pochette
   const covEl = document.getElementById('pd-cover');
   covEl.innerHTML = `<img src="/api/abs/cover/${item.id}" onerror="this.parentElement.textContent='📚'" style="width:100%;height:100%;object-fit:cover">`;
+  // Fond dynamique
+  const bgEl = document.getElementById('player-bg');
+  if (bgEl) {
+    bgEl.style.backgroundImage = `url('/api/abs/cover/${item.id}')`;
+    bgEl.classList.add('active');
+  }
 
 // badges supprimés
 
@@ -1407,8 +1473,8 @@ function updateClock() {
   const h    = now.getHours().toString().padStart(2,'0');
   const m    = now.getMinutes().toString().padStart(2,'0');
   const days = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
-  const months = ['janvier','fevrier','mars','avril','mai','juin',
-                  'juillet','aout','septembre','octobre','novembre','décembre'];
+  const months = ['janvier','février','mars','avril','mai','juin',
+                  'juillet','août','septembre','octobre','novembre','décembre'];
   const timeStr = `${h}:${m}`;
   const dateStr = `${days[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
   // Accueil
@@ -1866,7 +1932,40 @@ function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   ws = new WebSocket(`${proto}://${location.host}/api/player/ws`);
   ws.onmessage = e => {
+    const prevPlaying = pState ? pState.playing : false;
     pState = JSON.parse(e.data);
+    
+    // Si une lecture démarre depuis un autre appareil → aller sur la page lecture
+    if (!prevPlaying && pState.playing && pState.uri) {
+      const currentScreen = document.querySelector('.screen.active');
+      if (currentScreen && currentScreen.id !== 'screen-player') {
+        // Extraire l'item_id depuis l'URI ABS
+        const uriMatch = pState.uri.match(/items\/([a-f0-9-]+)\//);
+        if (uriMatch) {
+          const itemId = uriMatch[1];
+          const found = (window._absItems || []).find(i => i.id === itemId);
+          if (found) {
+            openBook(found);
+          } else {
+            // Charger le livre depuis ABS directement via les libraries
+            fetch('/api/abs/libraries', {headers: token ? {Authorization: 'Bearer '+token} : {}})
+              .then(r => r.json())
+              .then(data => {
+                const libs = data.libraries || [];
+                if (!libs.length) { showScreen('player'); return; }
+                return fetch('/api/abs/libraries/' + libs[0].id + '/items?limit=200', {headers: token ? {Authorization: 'Bearer '+token} : {}})
+                  .then(r => r.json())
+                  .then(d => {
+                    const items = d.results || d.items || [];
+                    const found2 = items.find(i => i.id === itemId);
+                    if (found2) openBook(found2);
+                    else showScreen('player');
+                  });
+              }).catch(() => showScreen('player'));
+          }
+        }
+      }
+    }
     document.getElementById('pd-time-cur').textContent = fmtTime(pState.position);
     document.getElementById('pd-time-dur').textContent = fmtTime(pState.duration);
     const pct = pState.duration > 0 ? (pState.position / pState.duration * 100).toFixed(1) : 0;
@@ -1879,7 +1978,7 @@ function connectWS() {
     if (document.getElementById('screen-player').classList.contains('active')) {
       document.getElementById('pd-time-cur').textContent = fmtTime(pState.position);
       const _p=document.getElementById('pd-prog');if(_p)_p.style.width=pct+'%';
-      const _pctEl2=document.getElementById('pd-pct');if(_pctEl2)_pctEl2.textContent=Math.round(pct)+'%';
+      document.getElementById('pd-pct').textContent = Math.round(pct) + '%';
     }
 
     if (!pState.playing && !pState.paused && isPlaying) {
@@ -2588,55 +2687,6 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
 
-
-
-var _standbyTimer = null;
-var _standbyDelay = 3 * 60 * 1000;
-var _standbyActive = false;
-
-function resetStandbyTimer() {
-  if (_standbyActive) return;
-  clearTimeout(_standbyTimer);
-  _standbyTimer = setTimeout(enterStandby, _standbyDelay);
-}
-function enterStandby() {
-  if (pState && pState.playing && !pState.paused) { resetStandbyTimer(); return; }
-  _standbyActive = true;
-  updateStandby();
-  const sb = document.getElementById('standby');
-  if (sb) sb.style.display = 'flex';
-}
-function exitStandby() {
-  _standbyActive = false;
-  const sb = document.getElementById('standby');
-  if (sb) sb.style.display = 'none';
-  resetStandbyTimer();
-}
-function updateStandby() {
-  const now = new Date();
-  const h = now.getHours().toString().padStart(2,'0');
-  const m = now.getMinutes().toString().padStart(2,'0');
-  const days = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
-  const months = ['janvier','fevrier','mars','avril','mai','juin','juillet','aout','septembre','octobre','novembre','décembre'];
-  const t = document.getElementById('sb-time');
-  const d = document.getElementById('sb-date');
-  if (t) t.textContent = h + ':' + m;
-  if (d) d.textContent = days[now.getDay()] + ' ' + now.getDate() + ' ' + months[now.getMonth()];
-  const topIcon = document.getElementById('cw-top-icon');
-  const topTemp = document.getElementById('cw-top-temp');
-  const topDesc = document.getElementById('cw-top-desc');
-  const sbIcon = document.getElementById('sb-weather-icon');
-  const sbTemp = document.getElementById('sb-weather-temp');
-  const sbDesc = document.getElementById('sb-weather-desc');
-  if (sbIcon && topIcon) sbIcon.textContent = topIcon.textContent;
-  if (sbTemp && topTemp) sbTemp.textContent = topTemp.textContent;
-  if (sbDesc && topDesc) sbDesc.textContent = topDesc.textContent;
-}
-setInterval(function() { if (_standbyActive) updateStandby(); }, 1000);
-['click','touchstart','keydown'].forEach(function(evt) {
-  document.addEventListener(evt, resetStandbyTimer, true);
-});
-resetStandbyTimer();
 
 </script>
 </body>
