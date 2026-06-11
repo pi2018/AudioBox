@@ -31,7 +31,10 @@ class SeekRequest(BaseModel):
     position: float
 
 class EQRequest(BaseModel):
-    bands: list  # 7 valeurs en dB : [60Hz, 150Hz, 400Hz, 1kHz, 2.5kHz, 6kHz, 15kHz]
+    bands: list
+
+class SpeedRequest(BaseModel):
+    speed: float = 1.0  # 7 valeurs en dB : [60Hz, 150Hz, 400Hz, 1kHz, 2.5kHz, 6kHz, 15kHz]
 
 
 @router.post("/play")
@@ -127,6 +130,14 @@ async def set_volume(level: int):
         raise HTTPException(status_code=400, detail="Volume entre 0 et 100")
     await audio.set_volume(level)
     return {"volume": level}
+
+
+@router.post("/speed")
+async def set_speed(req: SpeedRequest):
+    """Règle la vitesse de lecture."""
+    speed = max(0.25, min(4.0, req.speed))
+    await audio.set_speed(speed)
+    return {"status": "ok", "speed": speed}
 
 
 @router.post("/equalizer")

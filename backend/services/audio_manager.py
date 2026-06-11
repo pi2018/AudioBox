@@ -121,6 +121,10 @@ class AudioManager:
         self._volume = max(0, min(100, level))
         await self._mpv_cmd({"command": ["set_property", "volume", self._volume]})
 
+    async def set_speed(self, speed: float):
+        """Règle la vitesse de lecture mpv."""
+        await self._mpv_cmd({"command": ["set_property", "speed", speed]})
+
     async def set_equalizer(self, af_filter: str):
         """Applique un filtre audio à mpv en temps réel."""
         self._eq_filter = af_filter

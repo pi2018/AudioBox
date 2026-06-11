@@ -146,6 +146,19 @@ async def get_me():
     return await _abs_get("/api/me")
 
 
+@router.get("/chapters/{item_id}")
+async def get_chapters(item_id: str):
+    """Retourne les chapitres d'un livre audio."""
+    try:
+        item = await _abs_get(f"/api/items/{item_id}")
+        chapters = item.get("media", {}).get("chapters", [])
+        if not chapters:
+            return []
+        return [{"title": ch.get("title",""), "start": ch.get("start",0), "end": ch.get("end",0)} for ch in chapters]
+    except Exception as e:
+        return []
+
+
 @router.get("/search")
 async def search(q: str, lib_id: str = ""):
     if not q or not q.strip():
