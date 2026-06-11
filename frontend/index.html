@@ -69,31 +69,41 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
 .screen.active{display:flex;flex-direction:column}
 
 /* ══ PLAYER BAR ══════════════════════════════════ */
+/* Player bar style ABS */
 #player-bar{
-  background:var(--bg1);border-top:0.5px solid rgba(255,255,255,0.06);
-  padding:8px 16px;display:flex;align-items:center;gap:10px;
-  flex-shrink:0;min-height:54px;
+  background:#0f0f18;border-top:0.5px solid rgba(255,255,255,0.08);
+  padding:0;display:flex;flex-direction:column;
+  flex-shrink:0;
+}
+#pb-progress-bar{
+  height:3px;background:var(--bg3);cursor:pointer;position:relative;
+}
+#pb-prog-fill{height:100%;background:var(--acc);width:0%;transition:width .5s linear}
+#pb-main-row{
+  display:flex;align-items:center;gap:10px;padding:6px 14px;
 }
 #pb-cover{
-  width:40px;height:40px;background:var(--bg3);border-radius:8px;
-  display:flex;align-items:center;justify-content:center;font-size:18px;
+  width:44px;height:44px;background:var(--bg3);border-radius:6px;
+  display:flex;align-items:center;justify-content:center;font-size:20px;
   flex-shrink:0;overflow:hidden;
 }
 #pb-cover img{width:100%;height:100%;object-fit:cover}
 .pb-info{flex:1;min-width:0}
 #pb-title{font-size:13px;font-weight:500;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#pb-author{font-size:11px;color:var(--txt3)}
-.pb-prog{height:2px;background:var(--bg3);border-radius:1px;margin-top:4px;cursor:pointer}
-.pb-prog-fill{height:100%;background:var(--acc);border-radius:1px;width:0%;transition:width .5s linear}
-.pb-controls{display:flex;align-items:center;gap:4px}
-.pb-btn{background:none;border:none;color:var(--txt3);font-size:20px;cursor:pointer;padding:6px;border-radius:8px;display:flex;align-items:center;justify-content:center;transition:var(--tr)}
+#pb-author{font-size:11px;color:var(--txt3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pb-time{font-size:10px;color:var(--txt3);margin-top:1px}
+.pb-controls{display:flex;align-items:center;gap:2px}
+.pb-btn{background:none;border:none;color:var(--txt3);font-size:16px;cursor:pointer;padding:0;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;line-height:1;transition:var(--tr)}
 .pb-btn:hover{color:var(--txt2);background:rgba(255,255,255,0.05)}
-#btn-playpause{background:var(--acc);color:#fff;width:36px;height:36px;border-radius:50%;font-size:18px}
-#btn-playpause:hover{background:var(--acc2)}
-.pb-vol{display:flex;align-items:center;gap:6px}
-.pb-vol-icon{font-size:16px;color:var(--txt3)}
-#vol-slider{width:80px;height:3px;background:var(--bg3);border-radius:2px;appearance:none;outline:none;cursor:pointer}
-#vol-slider::-webkit-slider-thumb{appearance:none;width:12px;height:12px;background:var(--acc);border-radius:50%}
+#btn-playpause{background:var(--acc) !important;color:#fff !important;width:38px !important;height:38px !important;border-radius:50% !important;font-size:18px !important;display:flex !important;align-items:center !important;justify-content:center !important;line-height:1 !important;padding:0 !important;flex-shrink:0}
+#btn-playpause:hover{background:var(--acc2) !important}
+.pb-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+#pb-speed-label{font-size:11px;color:var(--txt3);background:var(--bg3);padding:2px 7px;border-radius:10px;cursor:pointer;border:none}
+#pb-speed-label:hover{background:var(--bg4);color:var(--txt)}
+.pb-vol{display:flex;align-items:center;gap:4px}
+.pb-vol-icon{font-size:14px;color:var(--txt3)}
+#vol-slider{width:70px;height:3px;background:var(--bg3);border-radius:2px;appearance:none;outline:none;cursor:pointer}
+#vol-slider::-webkit-slider-thumb{appearance:none;width:10px;height:10px;background:var(--acc);border-radius:50%}
 
 /* ══ HOME ════════════════════════════════════════ */
 #screen-home{gap:16px}
@@ -399,40 +409,64 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
 
       <!-- LECTURE LIVRE -->
       <div class="screen" id="screen-player">
-        <div class="player-volumio">
-          <div class="pv-cover-wrap">
-            <div id="pd-cover">📚</div>
-            <div class="pv-source-badge" id="pv-source">Livre audio</div>
+        <div style="display:flex;gap:20px;align-items:flex-start">
+          <div style="flex-shrink:0">
+            <div id="pd-cover" style="width:150px;height:150px;background:var(--bg3);border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:50px;box-shadow:0 4px 24px rgba(0,0,0,.5)">📚</div>
           </div>
-          <div class="pv-right">
-            <div id="pd-title">—</div>
-            <div id="pd-author"></div>
-            <div id="pd-desc"></div>
-            <div class="pv-prog-wrap">
-              <div class="pv-prog-times">
-                <span id="pd-time-cur">0:00</span>
-                <span id="pd-pct">0%</span>
-                <span id="pd-time-dur">0:00</span>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+            <div id="pd-title" style="font-size:20px;font-weight:700;color:var(--txt);line-height:1.2"></div>
+            <div id="pd-series" style="font-size:12px;color:var(--acc2)"></div>
+            <div id="pd-author" style="font-size:13px;color:var(--txt3)"></div>
+            <div style="display:flex;flex-direction:column;gap:3px;margin-top:4px">
+              <div style="display:flex;gap:8px;font-size:12px">
+                <span style="color:var(--txt3);min-width:80px">Durée</span>
+                <span id="pd-dur-meta" style="color:var(--txt2)">—</span>
               </div>
-              <div class="pv-prog-track" onclick="seekToClick(event)">
+              <div style="display:flex;gap:8px;font-size:12px">
+                <span style="color:var(--txt3);min-width:80px">Progression</span>
+                <span id="pd-pct" style="color:var(--acc2)">0%</span>
+
+              </div>
+            </div>
+            <div style="margin-top:6px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <span id="pd-time-cur" style="font-size:11px;color:var(--txt3)">0:00</span>
+                <span id="pd-time-dur" style="font-size:11px;color:var(--txt3)">0:00</span>
+              </div>
+              <div class="pv-prog-track" onclick="seekToClick(event)" style="height:4px">
                 <div class="pv-prog-fill" id="pd-prog"></div>
               </div>
             </div>
-            <div class="pv-controls">
-              <button class="pv-btn" onclick="seekRel(-30)" title="-30s">⏪</button>
-              <button class="pv-btn" id="btn-stop" onclick="stopBook()" title="Stop">⏹</button>
-              <button class="pv-btn" id="btn-read" onclick="startBook()">▶</button>
-              <button class="pv-btn" onclick="seekRel(+30)" title="+30s">⏩</button>
-            </div>
-            <div class="pv-vol-row">
-              <span class="pv-vol-icon">🔈</span>
-              <div class="pv-vol-track" id="pv-vol-track" onclick="seekToClickBar(event,true)" style="cursor:pointer">
-                <div class="pv-vol-fill" id="pv-vol-fill"></div>
-              </div>
-              <span class="pv-vol-icon">🔊</span>
+            <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+              <div class="pv-source-badge" id="pv-source">Livre audio</div>
+              <button class="speed-btn" id="btn-chapters" onclick="loadChapters()">📑 Chapitres</button>
+              <button class="speed-btn" onclick="document.getElementById('sleep-extended').style.display=document.getElementById('sleep-extended').style.display=='none'?'block':'none'">💤 Sommeil</button>
             </div>
           </div>
         </div>
+        <div style="margin-top:14px;padding:12px;background:var(--bg1);border-radius:var(--rsm);border-left:3px solid var(--acc)">
+          <div id="pd-desc" style="font-size:12px;color:var(--txt2);line-height:1.6;max-height:80px;overflow-y:auto"></div>
+        </div>
+        <div id="chapters-wrap" style="display:none;margin-top:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span style="font-size:12px;font-weight:500;color:var(--txt2)">📑 Chapitres (<span id="chapters-count">0</span>)</span>
+            <button class="speed-btn" onclick="toggleChapters()">▲ Fermer</button>
+          </div>
+          <div id="chapters-list" style="max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:4px"></div>
+        </div>
+        <div id="sleep-extended" style="display:none;margin-top:10px;padding:10px;background:var(--bg1);border-radius:var(--rsm)">
+          <div style="font-size:12px;color:var(--txt3);margin-bottom:8px">💤 Timer de sommeil</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="speed-btn" onclick="setSleepTimer(15)">15m</button>
+            <button class="speed-btn" onclick="setSleepTimer(30)">30m</button>
+            <button class="speed-btn" onclick="setSleepTimer(45)">45m</button>
+            <button class="speed-btn" onclick="setSleepTimer(60)">60m</button>
+            <button id="sleep-cancel" onclick="cancelSleepTimer()" style="display:none;background:var(--red);color:#fff;border:none;border-radius:20px;padding:4px 10px;font-size:11px;cursor:pointer">✕ <span id="sleep-countdown"></span></button>
+          </div>
+        </div>
+        <button id="btn-stop" onclick="stopBook()" style="display:none"></button>
+        <button id="btn-read" onclick="startBook()" style="display:none"></button>
+        <div id="pv-vol-track" style="display:none"><div id="pv-vol-fill"></div></div>
       </div>
 
       <!-- NAS -->
@@ -713,25 +747,35 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
 
     </div><!-- /screens -->
 
-    <!-- PLAYER BAR -->
+    <!-- PLAYER BAR style ABS -->
     <div id="player-bar">
-      <div id="pb-cover">🎵</div>
-      <div class="pb-info">
-        <div id="pb-title">Aucune lecture</div>
-        <div id="pb-author"></div>
-        <div class="pb-prog" onclick="seekToClickBar(event,false)">
-          <div class="pb-prog-fill" id="pb-prog-fill"></div>
+      <!-- Barre de progression -->
+      <div id="pb-progress-bar" onclick="seekToClickBar(event,false)">
+        <div id="pb-prog-fill"></div>
+      </div>
+      <!-- Ligne principale -->
+      <div id="pb-main-row">
+        <div id="pb-cover">🎵</div>
+        <div class="pb-info">
+          <div id="pb-title">Aucune lecture</div>
+          <div id="pb-author"></div>
+          <div id="pb-time">0:00 / 0:00</div>
         </div>
-      </div>
-      <div class="pb-controls">
-        <button class="pb-btn" onclick="seekRel(-30)" title="-30s">⏪</button>
-        <button class="pb-btn" id="btn-playpause" onclick="togglePlay()">▶</button>
-        <button class="pb-btn" onclick="seekRel(+30)" title="+30s">⏩</button>
-      </div>
-      <div class="pb-vol">
-        <span class="pb-vol-icon">🔈</span>
-        <input type="range" id="vol-slider" min="0" max="100" value="80" oninput="setVolume(this.value)">
-        <span class="pb-vol-icon">🔊</span>
+        <div class="pb-controls">
+          <button class="pb-btn" onclick="seekRel(-30)" title="-30s">⏮</button>
+          <button class="pb-btn" onclick="seekRel(-30)" title="-30s">↺</button>
+          <button class="pb-btn" id="btn-playpause" onclick="togglePlay()">▶</button>
+          <button class="pb-btn" onclick="seekRel(+30)" title="+30s">↻</button>
+          <button class="pb-btn" onclick="seekRel(+30)" title="+30s">⏭</button>
+        </div>
+        <div class="pb-right">
+          <button id="pb-speed-label" onclick="toggleSpeedPopup(event)">1x</button>
+          <div class="pb-vol">
+            <button class="sp-fine-btn" onclick="changeVolume(-5)" style="width:26px;height:26px;font-size:16px;background:var(--bg3);border:none;border-radius:50%;color:var(--txt);cursor:pointer;display:flex;align-items:center;justify-content:center">−</button>
+            <input type="range" id="vol-slider" min="0" max="100" value="80" oninput="setVolume(this.value)">
+            <button class="sp-fine-btn" onclick="changeVolume(+5)" style="width:26px;height:26px;font-size:16px;background:var(--bg3);border:none;border-radius:50%;color:var(--txt);cursor:pointer;display:flex;align-items:center;justify-content:center">+</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -746,6 +790,37 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
       <div id="ss-author"></div>
       <div id="ss-progress"><div id="ss-progress-fill" style="width:0%"></div></div>
       <div id="ss-time">0:00 / 0:00</div>
+    </div>
+  </div>
+</div>
+
+<!-- Popup vitesse style ABS -->
+<div id="speed-popup">
+  <button class="sp-close" onclick="closeSpeedPopup()">✕</button>
+  <div class="sp-presets">
+    <button class="sp-preset" onclick="setSpeedPopup(0.5)">0.5x</button>
+    <button class="sp-preset" onclick="setSpeedPopup(0.75)">0.75x</button>
+    <button class="sp-preset active" id="sp-p1" onclick="setSpeedPopup(1)">1x</button>
+    <button class="sp-preset" onclick="setSpeedPopup(1.25)">1.2x</button>
+    <button class="sp-preset" onclick="setSpeedPopup(1.5)">1.5x</button>
+    <button class="sp-preset" onclick="setSpeedPopup(2)">2x</button>
+  </div>
+  <div class="sp-fine">
+    <button class="sp-fine-btn" onclick="adjustSpeed(-0.05)">−</button>
+    <div id="sp-current">1.0x</div>
+    <button class="sp-fine-btn" onclick="adjustSpeed(+0.05)">+</button>
+  </div>
+</div>
+
+<!-- MODE VEILLE -->
+<div id="standby" onclick="exitStandby()" style="position:fixed;inset:0;background:#000;z-index:9998;display:none;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:20px">
+  <div id="sb-time" style="font-size:120px;font-weight:300;color:#f0f0f8;letter-spacing:-4px;line-height:1">00:00</div>
+  <div id="sb-date" style="font-size:20px;color:#606080;letter-spacing:1px">—</div>
+  <div style="display:flex;align-items:center;gap:16px;margin-top:20px">
+    <span id="sb-weather-icon" style="font-size:48px">🌤️</span>
+    <div style="display:flex;flex-direction:column;align-items:flex-start">
+      <span id="sb-weather-temp" style="font-size:36px;font-weight:300;color:#e0e0f0">—°</span>
+      <span id="sb-weather-desc" style="font-size:16px;color:#606080">—</span>
     </div>
   </div>
 </div>
@@ -1090,11 +1165,26 @@ async function openBook(item) {
 
   document.getElementById('pd-title').textContent  = title;
   document.getElementById('pd-author').textContent = author;
-  // pd-series supprimé
-  document.getElementById('pd-desc').textContent   = desc;
-  document.getElementById('pd-time-dur').textContent = fmtTime(dur);
-  document.getElementById('pd-time-cur').textContent = fmtTime(prog);
-  document.getElementById('pd-pct').textContent = pct + '%';
+  const seriesEl = document.getElementById('pd-series');
+  if (seriesEl) seriesEl.textContent = item.media?.metadata?.seriesName || '';
+  document.getElementById('pd-desc').textContent = desc;
+  const durMeta = document.getElementById('pd-dur-meta');
+  if (durMeta) durMeta.textContent = fmtTime(dur);
+  const timeDur = document.getElementById('pd-time-dur');
+  if (timeDur) timeDur.textContent = fmtTime(dur);
+  const timeCur = document.getElementById('pd-time-cur');
+  if (timeCur) timeCur.textContent = fmtTime(prog);
+  // Mettre à jour la progression correctement
+  const realPct = item.userMediaProgress ? item.userMediaProgress.progress : 0;
+  const realPctRound = Math.round(realPct * 100);
+  const realPctEl = document.getElementById('pd-pct');
+  if (realPctEl) realPctEl.textContent = realPctRound + '%';
+  const pdProg = document.getElementById('pd-prog');
+  if (pdProg) pdProg.style.width = realPctRound + '%';
+  const realPos = item.userMediaProgress ? item.userMediaProgress.currentTime : 0;
+  const timeCurEl = document.getElementById('pd-time-cur');
+  if (timeCurEl) timeCurEl.textContent = fmtTime(realPos);
+  const _pctEl=document.getElementById('pd-pct');if(_pctEl)_pctEl.textContent=pct+'%';
   const _p=document.getElementById('pd-prog');if(_p)_p.style.width=pct+'%';
 
   // Pochette
@@ -1317,8 +1407,8 @@ function updateClock() {
   const h    = now.getHours().toString().padStart(2,'0');
   const m    = now.getMinutes().toString().padStart(2,'0');
   const days = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
-  const months = ['janvier','février','mars','avril','mai','juin',
-                  'juillet','août','septembre','octobre','novembre','décembre'];
+  const months = ['janvier','fevrier','mars','avril','mai','juin',
+                  'juillet','aout','septembre','octobre','novembre','décembre'];
   const timeStr = `${h}:${m}`;
   const dateStr = `${days[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
   // Accueil
@@ -1780,13 +1870,16 @@ function connectWS() {
     document.getElementById('pd-time-cur').textContent = fmtTime(pState.position);
     document.getElementById('pd-time-dur').textContent = fmtTime(pState.duration);
     const pct = pState.duration > 0 ? (pState.position / pState.duration * 100).toFixed(1) : 0;
-    document.getElementById('pb-prog-fill').style.width = pct + '%';
+    const pbFill = document.getElementById('pb-prog-fill');
+    if (pbFill) pbFill.style.width = pct + '%';
+    const pbTime = document.getElementById('pb-time');
+    if (pbTime) pbTime.textContent = fmtTime(pState.position) + ' / ' + fmtTime(pState.duration);
 
     // Sync écran lecture
     if (document.getElementById('screen-player').classList.contains('active')) {
       document.getElementById('pd-time-cur').textContent = fmtTime(pState.position);
       const _p=document.getElementById('pd-prog');if(_p)_p.style.width=pct+'%';
-      document.getElementById('pd-pct').textContent = Math.round(pct) + '%';
+      const _pctEl2=document.getElementById('pd-pct');if(_pctEl2)_pctEl2.textContent=Math.round(pct)+'%';
     }
 
     if (!pState.playing && !pState.paused && isPlaying) {
@@ -2105,6 +2198,163 @@ async function applyEQToMpv() {
   } catch(e) {}
 }
 
+// ══════════════════════════════════════════════════════
+// TIMER DE SOMMEIL
+// ══════════════════════════════════════════════════════
+var _sleepTimer = null;
+var _sleepEnd   = null;
+var _sleepInterval = null;
+
+function setSleepTimer(minutes) {
+  cancelSleepTimer();
+  _sleepEnd = Date.now() + minutes * 60 * 1000;
+
+  // Mettre à jour les boutons
+  document.querySelectorAll('.speed-btn').forEach(b => {
+    if (['15m','30m','45m','60m'].includes(b.textContent)) b.classList.remove('active');
+  });
+
+  const btn = document.getElementById('sleep-cancel');
+  if (btn) btn.style.display = 'inline-flex';
+
+  // Compte à rebours
+  _sleepInterval = setInterval(() => {
+    const remaining = Math.max(0, _sleepEnd - Date.now());
+    const mins = Math.floor(remaining / 60000);
+    const secs = Math.floor((remaining % 60000) / 1000);
+    const el = document.getElementById('sleep-countdown');
+    if (el) el.textContent = `${mins}:${secs.toString().padStart(2,'0')}`;
+    if (remaining <= 0) {
+      clearInterval(_sleepInterval);
+      api('POST', '/player/stop').catch(() => {});
+      cancelSleepTimer();
+      toast('💤 Bonne nuit !');
+    }
+  }, 1000);
+
+  toast(`💤 Arrêt dans ${minutes} minutes`);
+}
+
+function cancelSleepTimer() {
+  if (_sleepInterval) clearInterval(_sleepInterval);
+  _sleepTimer = null;
+  _sleepEnd   = null;
+  const btn = document.getElementById('sleep-cancel');
+  if (btn) btn.style.display = 'none';
+}
+
+// ══════════════════════════════════════════════════════
+// VITESSE DE LECTURE
+// ══════════════════════════════════════════════════════
+async function setSpeed(speed) {
+  try {
+    await api('POST', '/player/speed', {speed: speed});
+    // Mettre à jour les boutons
+    document.querySelectorAll('.speed-btn').forEach(b => {
+      b.classList.toggle('active', parseFloat(b.textContent) === speed);
+    });
+    toast(`Vitesse : ${speed}x`);
+  } catch(e) { toast('Erreur: ' + e.message); }
+}
+
+// ══════════════════════════════════════════════════════
+// CHAPITRES ABS
+// ══════════════════════════════════════════════════════
+var _chapters = [];
+var _chaptersVisible = false;
+
+async function loadChapters() {
+  if (!currentItem) return;
+  try {
+    _chapters = await api('GET', `/abs/chapters/${currentItem.id}`);
+    if (!_chapters || !_chapters.length) { toast('Pas de chapitres disponibles'); return; }
+    renderChapters();
+    const wrap = document.getElementById('chapters-wrap');
+    const btn  = document.getElementById('btn-chapters');
+    if (wrap) wrap.style.display = 'block';
+    if (btn)  btn.style.display  = 'none';
+    _chaptersVisible = true;
+  } catch(e) {
+    toast('Pas de chapitres disponibles');
+  }
+}
+
+function renderChapters() {
+  const list = document.getElementById('chapters-list');
+  if (!list) return;
+  list.innerHTML = '';
+  const countEl = document.getElementById('chapters-count');
+  if (countEl) countEl.textContent = _chapters.length;
+  _chapters.forEach((ch, i) => {
+    const div = document.createElement('div');
+    div.style.cssText = 'padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--txt2);background:var(--bg2);display:flex;justify-content:space-between;transition:var(--tr)';
+    div.onmouseover = () => div.style.background = 'var(--bg3)';
+    div.onmouseout  = () => div.style.background = 'var(--bg2)';
+    div.onclick = () => {
+      api('POST', '/player/seek', {position: ch.start}).catch(() => {});
+      toast(`📑 ${ch.title}`);
+    };
+    div.innerHTML = `<span>${ch.title || 'Chapitre ' + (i+1)}</span><span style="color:var(--txt3)">${fmtTime(ch.start)}</span>`;
+    list.appendChild(div);
+  });
+}
+
+function toggleChapters() {
+  _chaptersVisible = !_chaptersVisible;
+  const list = document.getElementById('chapters-list');
+  const btn  = document.querySelector('#chapters-wrap .speed-btn');
+  if (list) list.style.display = _chaptersVisible ? 'flex' : 'none';
+  if (btn)  btn.textContent = _chaptersVisible ? '▲' : '▼';
+}
+
+// Popup vitesse style ABS
+var _currentSpeed = 1.0;
+
+function changeVolume(delta) {
+  const slider = document.getElementById('vol-slider');
+  if (!slider) return;
+  const newVol = Math.max(0, Math.min(100, parseInt(slider.value) + delta));
+  slider.value = newVol;
+  setVolume(newVol);
+}
+
+function toggleSpeedPopup(e) {
+  if (e) e.stopPropagation();
+  const popup = document.getElementById('speed-popup');
+  if (popup) popup.classList.toggle('show');
+}
+function closeSpeedPopup() {
+  const popup = document.getElementById('speed-popup');
+  if (popup) popup.classList.remove('show');
+}
+function setSpeedPopup(s) {
+  _currentSpeed = Math.round(s * 100) / 100;
+  updateSpeedUI();
+  setSpeed(_currentSpeed);
+}
+function adjustSpeed(delta) {
+  _currentSpeed = Math.round((_currentSpeed + delta) * 100) / 100;
+  _currentSpeed = Math.max(0.25, Math.min(4, _currentSpeed));
+  updateSpeedUI();
+  setSpeed(_currentSpeed);
+}
+function updateSpeedUI() {
+  const lbl = document.getElementById('pb-speed-label');
+  if (lbl) lbl.textContent = _currentSpeed + 'x';
+  const cur = document.getElementById('sp-current');
+  if (cur) cur.textContent = _currentSpeed + 'x';
+  document.querySelectorAll('.sp-preset').forEach(b => {
+    b.classList.toggle('active', parseFloat(b.textContent) === _currentSpeed);
+  });
+}
+// Fermer popup en cliquant ailleurs
+document.addEventListener('click', e => {
+  const popup = document.getElementById('speed-popup');
+  if (popup && popup.classList.contains('show') && !popup.contains(e.target)) {
+    popup.classList.remove('show');
+  }
+});
+
 function saveWeatherLocation() {
   const lat = document.getElementById('cfg-weather-lat').value.trim();
   const lon = document.getElementById('cfg-weather-lon').value.trim();
@@ -2338,6 +2588,55 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
 
+
+
+var _standbyTimer = null;
+var _standbyDelay = 3 * 60 * 1000;
+var _standbyActive = false;
+
+function resetStandbyTimer() {
+  if (_standbyActive) return;
+  clearTimeout(_standbyTimer);
+  _standbyTimer = setTimeout(enterStandby, _standbyDelay);
+}
+function enterStandby() {
+  if (pState && pState.playing && !pState.paused) { resetStandbyTimer(); return; }
+  _standbyActive = true;
+  updateStandby();
+  const sb = document.getElementById('standby');
+  if (sb) sb.style.display = 'flex';
+}
+function exitStandby() {
+  _standbyActive = false;
+  const sb = document.getElementById('standby');
+  if (sb) sb.style.display = 'none';
+  resetStandbyTimer();
+}
+function updateStandby() {
+  const now = new Date();
+  const h = now.getHours().toString().padStart(2,'0');
+  const m = now.getMinutes().toString().padStart(2,'0');
+  const days = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+  const months = ['janvier','fevrier','mars','avril','mai','juin','juillet','aout','septembre','octobre','novembre','décembre'];
+  const t = document.getElementById('sb-time');
+  const d = document.getElementById('sb-date');
+  if (t) t.textContent = h + ':' + m;
+  if (d) d.textContent = days[now.getDay()] + ' ' + now.getDate() + ' ' + months[now.getMonth()];
+  const topIcon = document.getElementById('cw-top-icon');
+  const topTemp = document.getElementById('cw-top-temp');
+  const topDesc = document.getElementById('cw-top-desc');
+  const sbIcon = document.getElementById('sb-weather-icon');
+  const sbTemp = document.getElementById('sb-weather-temp');
+  const sbDesc = document.getElementById('sb-weather-desc');
+  if (sbIcon && topIcon) sbIcon.textContent = topIcon.textContent;
+  if (sbTemp && topTemp) sbTemp.textContent = topTemp.textContent;
+  if (sbDesc && topDesc) sbDesc.textContent = topDesc.textContent;
+}
+setInterval(function() { if (_standbyActive) updateStandby(); }, 1000);
+['click','touchstart','keydown'].forEach(function(evt) {
+  document.addEventListener(evt, resetStandbyTimer, true);
+});
+resetStandbyTimer();
 
 </script>
 </body>
