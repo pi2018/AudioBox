@@ -15,7 +15,7 @@ logging.basicConfig(
 logger = logging.getLogger("main")
 
 ws_manager = WSManager()
-FRONTEND_DIR = Path("/opt/jv/frontend")
+FRONTEND_DIR = Path("/opt/audiobox/frontend")
 
 
 @asynccontextmanager

@@ -5,7 +5,7 @@ from config import load_config
 
 router = APIRouter(prefix="/nas", tags=["nas"])
 
-ALLOWED_ROOTS = ["/opt/jv/nas", "/mnt"]
+ALLOWED_ROOTS = ["/opt/audiobox/nas", "/mnt"]
 
 
 def _is_safe_path(path: str) -> bool:
@@ -32,7 +32,7 @@ async def list_mounts():
 
 
 @router.get("/browse")
-async def browse(path: str = "/opt/jv/nas"):
+async def browse(path: str = "/opt/audiobox/nas"):
     """Parcourt un répertoire NAS monté."""
     # Résoudre les symlinks et .. pour éviter les traversals
     try:

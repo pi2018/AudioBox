@@ -2,8 +2,8 @@ import json, os, logging
 from pathlib import Path
 from cryptography.fernet import Fernet, InvalidToken
 
-CONFIG_PATH = Path("/opt/jv/config/config.json")
-KEY_PATH    = Path("/opt/jv/config/.secret.key")
+CONFIG_PATH = Path("/opt/audiobox/config/config.json")
+KEY_PATH    = Path("/opt/audiobox/config/.secret.key")
 logger      = logging.getLogger("config")
 
 

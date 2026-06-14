@@ -1,5 +1,5 @@
 #!/bin/bash
-# /opt/jv/system/mount-nas.sh
+# /opt/audiobox/system/mount-nas.sh
 # Propriétaire: root, chmod 700
 set -euo pipefail
 
@@ -16,7 +16,7 @@ if [[ -z "$HOST" || -z "$SHARE" || -z "$MOUNT_POINT" ]]; then
 fi
 
 # Restreindre les points de montage autorisés
-if [[ "$MOUNT_POINT" != /opt/jv/nas/* && "$MOUNT_POINT" != /mnt/* ]]; then
+if [[ "$MOUNT_POINT" != /opt/audiobox/nas/* && "$MOUNT_POINT" != /mnt/* ]]; then
     echo "Point de montage non autorisé: $MOUNT_POINT" >&2
     exit 1
 fi

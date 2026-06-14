@@ -1,10 +1,30 @@
+# Config avec infos personnelles
+config/config.json
+backend/config.json
+.secret.key
+.dashboard_token
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
-config/
-.secret.key
-.dashboard_token
-config.json
-nas/
+*.pyd
+.Python
 venv/
+env/
+
+# Logs
 *.log
+logs/
+
+# NAS mount point
+nas/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backup
+*.tar.gz
+*.zip
+*.bak

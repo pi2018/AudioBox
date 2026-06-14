@@ -29,7 +29,7 @@ User=jv
 Group=jv
 Environment=HOME=/home/jv
 Environment=XDG_RUNTIME_DIR=/run/user/1000
-ExecStart=/home/jv/.cargo/bin/librespot \
+ExecStart=/home/${USER}/.cargo/bin/librespot \
     --name "AudioBox" \
     --bitrate 320 \
     --backend pipe \

@@ -1,0 +1,19 @@
+{
+  "abs_url": "http://192.168.1.10:13378",
+  "abs_api_key": "VOTRE_CLE_API_ABS",
+  "default_output": "jack",
+  "nas_mounts": [
+    {
+      "host": "192.168.1.50",
+      "share": "musique",
+      "mount_point": "/opt/jv/nas/musique",
+      "username": "user"
+    }
+  ],
+  "radios": [
+    { "name": "France Inter",    "url": "https://icecast.radiofrance.fr/franceinter-midfi.mp3" },
+    { "name": "France Info",     "url": "https://icecast.radiofrance.fr/franceinfo-midfi.mp3" },
+    { "name": "FIP",             "url": "https://icecast.radiofrance.fr/fip-midfi.mp3" },
+    { "name": "Radio Paradise",  "url": "https://stream.radioparadise.com/aac-320" }
+  ]
+}

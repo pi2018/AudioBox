@@ -1,129 +1,46 @@
-# AudioBox 🎵
+# 🎵 AudioBox
 
-Lecteur audio personnalisé pour Raspberry Pi — Audiobookshelf, Radios web, YouTube, NAS.
+**Home Audio System for Raspberry Pi**
 
-## Prérequis
+A self-contained kiosk audio player built on Raspberry Pi 4 with a 7-inch touchscreen. Combines Audiobookshelf, web radio, YouTube audio, NAS music, and Home Assistant integration in a beautiful Volumio-style dark interface.
 
-- Raspberry Pi 4 (ou 5) avec **Raspberry Pi OS Lite 64-bit** fraîchement installé
-- Accès SSH ou clavier/écran pour l'installation initiale
-- Connexion Internet active
+## ✨ Features
 
-## Installation rapide
+- 📚 **Audiobooks** — Audiobookshelf integration with chapter navigation, sync, speed control
+- 📻 **Web Radio** — 30,000+ stations via Radio Browser API
+- ▶️ **YouTube** — Audio-only playback via yt-dlp
+- 🗄️ **NAS Music** — Browse and play from network storage
+- 🏠 **Home Assistant** — Full integration with webhooks and public API
+- 💤 **Sleep Timer** — Auto-stop after 15/30/45/60 minutes
+- 🌙 **Standby Mode** — Clock + weather display after 3 minutes
+- 📱 **Mobile Optimized** — Responsive design for smartphones
+- 🎨 **Dynamic Background** — Album art as blurred background
+- 🔵 **Bluetooth** — Bluetooth speaker support
 
-```bash
-# 1. Cloner ou copier le projet sur le Pi
-scp -r jv/ pi@<IP_DU_PI>:~/
+## 🛠️ Hardware
 
-# 2. Se connecter et lancer l'installation
-ssh pi@<IP_DU_PI>
-cd ~/jv
-sudo bash install.sh
+- Raspberry Pi 4 (2GB+ RAM)
+- 7-inch DSI touchscreen (800×480)
+- MicroSD card (16GB+)
+- USB-C power supply (3A)
 
-# 3. Redémarrer
-sudo reboot
-```
-
-## Récupérer le token dashboard
-
-Après le redémarrage, notez votre token :
-
-```bash
-journalctl -u jv-backend | grep "Token"
-```
-
-## Accès au dashboard
-
-| Interface | URL |
-|-----------|-----|
-| Depuis un PC/smartphone | `http://<IP_DU_PI>:8000` |
-| Écran tactile (kiosk) | Automatique au démarrage |
-
-## Structure du projet
-
-```
-jv/
-├── backend/
-│   ├── main.py                  # Point d'entrée FastAPI
-│   ├── config.py                # Gestionnaire config chiffrée
-│   ├── requirements.txt
-│   ├── routers/
-│   │   ├── abs.py               # Client Audiobookshelf
-│   │   ├── player.py            # Moteur de lecture (mpv)
-│   │   ├── youtube.py           # yt-dlp / recherche YouTube
-│   │   ├── nas.py               # Navigation NAS monté
-│   │   ├── bluetooth.py         # Gestion BT via bluetoothctl
-│   │   └── settings.py          # API paramètres (protégée)
-│   └── services/
-│       ├── audio_manager.py     # Interface mpv via socket IPC
-│       └── ws_manager.py        # WebSocket broadcast
-├── frontend/
-│   ├── index.html               # PWA dark mode (SPA)
-│   ├── manifest.json            # Manifest PWA
-│   ├── sw.js                    # Service Worker
-│   └── assets/
-│       └── icon-192.svg
-├── config/
-│   └── config.example.json      # Exemple de configuration
-├── system/
-│   ├── jv-backend.service # Service systemd backend
-│   ├── jv-kiosk.service   # Service systemd kiosk
-│   ├── 99-jv-polkit.rules # Règles polkit
-│   ├── mount-nas.sh             # Script montage NAS (root)
-│   └── umount-nas.sh            # Script démontage NAS (root)
-└── install.sh                   # Script d'installation
-```
-
-## Sécurité
-
-| Composant | Protection |
-|-----------|------------|
-| Config (clés API, mots de passe) | Chiffrement AES-128 (Fernet) sur disque |
-| Endpoints `/api/settings/*` | Bearer token (32 octets aléatoires) |
-| Actions système (mount, umount) | polkit rules — scripts root uniquement |
-| Scripts système | `chmod 700`, `chown root:root` |
-| Chromium kiosk | Sans barre d'adresse ni DevTools |
-
-## Services systemd
+## 🚀 Installation
 
 ```bash
-# État
-sudo systemctl status jv-backend
-sudo systemctl status jv-kiosk
-
-# Logs
-journalctl -u jv-backend -f
-journalctl -u jv-kiosk -f
-
-# Redémarrer
-sudo systemctl restart jv-backend
+git clone https://github.com/pi2018/AudioBox.git
+cd AudioBox
+chmod +x install.sh
+./install.sh
 ```
 
-## Accès API (développement)
+## ⚙️ Configuration
 
-La documentation interactive est disponible sur :
-`http://<IP_DU_PI>:8000/docs`
+Edit `config/config.json` with your settings:
+- Audiobookshelf server URL and API key
+- NAS path and credentials
+- Home Assistant webhook URLs
 
-## Dépannage
+## 📄 License
 
-### Le backend ne démarre pas
-```bash
-journalctl -u jv-backend --no-pager | tail -30
-```
-
-### Pas de son via Bluetooth
-```bash
-# Vérifier que PipeWire voit le device BT
-sudo -u jv pw-dump | grep -i bluetooth
-```
-
-### NAS impossible à monter
-```bash
-# Tester manuellement
-sudo mount -t cifs //ADRESSE/PARTAGE /mnt/test -o guest
-```
-
-## ⚠️ Utilisation commerciale
-
-Ce projet est **strictement non commercial**.
-Toute utilisation commerciale est interdite sans autorisation écrite.
-Pour toute demande : ouvrir une issue sur GitHub.
+GNU GPL v3 — Free for personal use. Commercial use prohibited.
+See [LICENSE](LICENSE) for details.
