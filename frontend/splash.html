@@ -64,7 +64,23 @@ async function waitForBackend() {
   while(true) {
     try {
       const r = await fetch('http://localhost:8000/api/player/status');
-      if(r.ok) { window.location.href = 'http://localhost:8000'; return; }
+      if(r.ok) {
+        // Vérifier si c'est le premier démarrage (ABS non configuré)
+        try {
+          const s = await fetch('http://localhost:8000/api/settings/setup-info');
+          if(s.ok) {
+            const data = await s.json();
+            if(!data.configured) {
+              // Premier démarrage : afficher la page setup
+              window.location.href = 'http://localhost:8000/setup.html';
+              return;
+            }
+          }
+        } catch(e) {}
+        // Déjà configuré : interface normale
+        window.location.href = 'http://localhost:8000';
+        return;
+      }
     } catch(e) {}
     await new Promise(r => setTimeout(r, 1500));
   }
