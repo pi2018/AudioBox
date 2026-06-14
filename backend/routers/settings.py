@@ -8,7 +8,7 @@ router   = APIRouter(prefix="/settings", tags=["settings"])
 security = HTTPBearer()
 logger   = logging.getLogger("settings")
 
-_TOKEN_FILE = "/opt/audiobox/config/.dashboard_token"
+_TOKEN_FILE = "/opt/jv/config/.dashboard_token"
 
 
 def _get_token() -> str:
@@ -59,8 +59,8 @@ class NASMount(BaseModel):
     @field_validator("mount_point")
     @classmethod
     def validate_mount_point(cls, v):
-        if not v.startswith("/opt/audiobox/nas") and not v.startswith("/mnt"):
-            raise ValueError("Point de montage doit être sous /opt/audiobox/nas/ ou /mnt/")
+        if not v.startswith("/opt/jv/nas") and not v.startswith("/mnt"):
+            raise ValueError("Point de montage doit être sous /opt/jv/nas/ ou /mnt/")
         return v
 
     @field_validator("host")
@@ -113,7 +113,7 @@ async def set_abs(data: ABSSettings, _: bool = Depends(verify_token)):
 
 @router.post("/nas/mount")
 async def mount_nas(data: NASMount, _: bool = Depends(verify_token)):
-    script = "/opt/audiobox/system/mount-nas.sh"
+    script = "/opt/jv/system/mount-nas.sh"
     if not os.path.exists(script):
         raise HTTPException(status_code=503, detail=f"Script de montage introuvable: {script}")
 
@@ -144,7 +144,7 @@ async def mount_nas(data: NASMount, _: bool = Depends(verify_token)):
 
 @router.post("/nas/umount")
 async def umount_nas(mount_point: str, _: bool = Depends(verify_token)):
-    script = "/opt/audiobox/system/umount-nas.sh"
+    script = "/opt/jv/system/umount-nas.sh"
     if not os.path.exists(script):
         raise HTTPException(status_code=503, detail="Script de démontage introuvable")
 

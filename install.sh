@@ -287,7 +287,8 @@ warn "Conservez le token en lieu sûr."
 # ── Volume ALSA bloqué à 100% dans le service ──────────────
 title "Configuration volume ALSA"
 if ! grep -q "amixer set Master" /etc/systemd/system/jv-backend.service; then
-  sed -i '/\[Service\]/a ExecStartPre=/usr/bin/amixer set Master 100%' /etc/systemd/system/jv-backend.service
+  sed -i '/\[Service\]/a ExecStartPre=-/usr/bin/amixer set PCM 100%
+ExecStartPre=-/usr/bin/amixer set Master 100%' /etc/systemd/system/jv-backend.service
   systemctl daemon-reload
   log "Volume ALSA configuré à 100%"
 fi
