@@ -121,3 +121,9 @@ sudo -u jv pw-dump | grep -i bluetooth
 # Tester manuellement
 sudo mount -t cifs //ADRESSE/PARTAGE /mnt/test -o guest
 ```
+
+## ⚠️ Utilisation commerciale
+
+Ce projet est **strictement non commercial**.
+Toute utilisation commerciale est interdite sans autorisation écrite.
+Pour toute demande : ouvrir une issue sur GitHub.
