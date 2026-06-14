@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AudioBox - Configuration</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  background:#0a0a0f;color:#f0f0f8;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:20px;overflow-x:hidden;
+}
+.card{
+  background:#0f0f18;border:1px solid rgba(124,106,247,0.2);
+  border-radius:20px;max-width:520px;width:100%;
+  padding:32px;box-shadow:0 20px 60px rgba(0,0,0,0.5);
+  animation:fadeUp .6s ease;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* Logo */
+.logo{display:flex;flex-direction:column;align-items:center;gap:16px;margin-bottom:28px}
+.logo-circle{
+  width:88px;height:88px;border-radius:50%;
+  background:linear-gradient(135deg,#7c6af7,#a599ff);
+  display:flex;align-items:center;justify-content:center;
+  font-size:40px;position:relative;
+  box-shadow:0 0 40px rgba(124,106,247,0.4);
+  animation:pulse 2.5s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+.logo-title{font-size:28px;font-weight:700;letter-spacing:2px}
+.logo-sub{font-size:13px;color:#505070;letter-spacing:3px;text-transform:uppercase}
+
+/* Steps */
+.welcome{text-align:center;margin-bottom:24px}
+.welcome h2{font-size:18px;font-weight:600;margin-bottom:8px;color:#a599ff}
+.welcome p{font-size:14px;color:#a0a0c0;line-height:1.5}
+
+/* Token box */
+.token-section{
+  background:rgba(124,106,247,0.08);
+  border:1px solid rgba(124,106,247,0.25);
+  border-radius:14px;padding:20px;margin-bottom:20px;
+}
+.token-label{
+  font-size:11px;text-transform:uppercase;letter-spacing:1px;
+  color:#7c6af7;font-weight:600;margin-bottom:10px;
+  display:flex;align-items:center;gap:6px;
+}
+.token-value{
+  background:#0a0a0f;border-radius:10px;padding:14px;
+  font-family:'SF Mono',Menlo,Consolas,monospace;font-size:14px;
+  color:#f0f0f8;word-break:break-all;line-height:1.4;
+  border:1px solid rgba(255,255,255,0.06);
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+}
+.token-text{flex:1;min-width:0}
+.copy-btn{
+  background:#7c6af7;border:none;border-radius:8px;
+  padding:8px 14px;color:#fff;font-size:12px;font-weight:600;
+  cursor:pointer;white-space:nowrap;transition:all .15s ease;
+}
+.copy-btn:hover{background:#a599ff}
+.copy-btn.copied{background:#1D9E75}
+
+/* Info rows */
+.info-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.05);
+  font-size:14px;
+}
+.info-row:last-child{border-bottom:none}
+.info-label{color:#a0a0c0;display:flex;align-items:center;gap:8px}
+.info-value{color:#f0f0f8;font-weight:500}
+
+/* Steps list */
+.steps{margin:20px 0}
+.step{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:12px;border-radius:10px;margin-bottom:8px;
+  background:#141420;
+}
+.step-num{
+  width:26px;height:26px;border-radius:50%;
+  background:#7c6af7;color:#fff;font-size:13px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.step-text{font-size:13px;color:#c0c0d0;line-height:1.4;padding-top:3px}
+
+/* Button */
+.btn-launch{
+  width:100%;background:linear-gradient(135deg,#7c6af7,#a599ff);
+  border:none;border-radius:12px;padding:16px;
+  color:#fff;font-size:16px;font-weight:600;cursor:pointer;
+  margin-top:8px;transition:all .15s ease;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn-launch:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(124,106,247,0.4)}
+
+.footer{text-align:center;margin-top:20px;font-size:11px;color:#404060}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-circle">🎵</div>
+    <div class="logo-title">AudioBox</div>
+    <div class="logo-sub">Home Audio System</div>
+  </div>
+
+  <div class="welcome">
+    <h2>🎉 Installation réussie !</h2>
+    <p>Votre AudioBox est prête. Voici vos informations d'accès.</p>
+  </div>
+
+  <!-- Token -->
+  <div class="token-section">
+    <div class="token-label">🔑 Token d'accès</div>
+    <div class="token-value">
+      <span class="token-text" id="token">Chargement...</span>
+      <button class="copy-btn" id="copyBtn" onclick="copyToken()">Copier</button>
+    </div>
+  </div>
+
+  <!-- Infos -->
+  <div class="info-row">
+    <span class="info-label">🌐 Adresse</span>
+    <span class="info-value" id="address">—</span>
+  </div>
+  <div class="info-row">
+    <span class="info-label">📡 État du serveur</span>
+    <span class="info-value" id="status" style="color:#1D9E75">● En ligne</span>
+  </div>
+
+  <!-- Étapes -->
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">Copiez le token ci-dessus et gardez-le en lieu sûr</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">Configurez Audiobookshelf dans Paramètres → Sources (URL + clé API)</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">Appairez votre enceinte Bluetooth dans Paramètres → Audio</div>
+    </div>
+  </div>
+
+  <button class="btn-launch" onclick="launchApp()">
+    🚀 Lancer AudioBox
+  </button>
+
+  <div class="footer">AudioBox v1.3.0 · GNU GPL v3</div>
+</div>
+
+<script>
+// Récupérer le token et les infos
+async function loadInfo() {
+  // Adresse
+  document.getElementById('address').textContent = window.location.host;
+
+  // Récupérer le token
+  try {
+    const r = await fetch('/api/settings/setup-info');
+    if (r.ok) {
+      const data = await r.json();
+      if (data.configured) {
+        document.getElementById('token').textContent = 'Déjà configuré (token masqué)';
+        document.getElementById('copyBtn').style.display = 'none';
+      } else {
+        document.getElementById('token').textContent = data.token || 'Voir les logs';
+      }
+    } else {
+      document.getElementById('token').textContent = 'Indisponible';
+    }
+  } catch(e) {
+    document.getElementById('token').textContent = 'Erreur de chargement';
+  }
+}
+
+function copyToken() {
+  const token = document.getElementById('token').textContent;
+  navigator.clipboard.writeText(token).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ Copié';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'Copier';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+function launchApp() {
+  window.location.href = '/';
+}
+
+loadInfo();
+</script>
+</body>
+</html>

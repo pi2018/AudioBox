@@ -393,4 +393,40 @@ EOF
 systemctl enable audiobox-bluetooth 2>/dev/null || true
 log "Bluetooth configuré (déblocage auto)"
 
-log "Installation v1.3.0 complète !"
+# ── Récupérer et afficher le token joliment ────────────────
+title "Démarrage du backend"
+systemctl start jv-backend 2>/dev/null || true
+sleep 5
+
+# Récupérer le token depuis les logs
+TOKEN=$(journalctl -u jv-backend --no-pager 2>/dev/null | grep -oP 'Dashboard Token: \K[A-Za-z0-9_-]+' | tail -1)
+IP=$(hostname -I | awk '{print $1}')
+
+echo ""
+echo -e "${CYAN}╔════════════════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║${NC}                                                        ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}        ${BOLD}🎵  AudioBox installé avec succès !  🎵${NC}        ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}                                                        ${CYAN}║${NC}"
+echo -e "${CYAN}╠════════════════════════════════════════════════════════╣${NC}"
+echo -e "${CYAN}║${NC}                                                        ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}  ${BOLD}Interface web :${NC}                                       ${CYAN}║${NC}"
+printf "${CYAN}║${NC}  ${GREEN}http://%-15s:8000${NC}                          ${CYAN}║${NC}\n" "$IP"
+echo -e "${CYAN}║${NC}                                                        ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}  ${BOLD}Token d'accès (dashboard) :${NC}                           ${CYAN}║${NC}"
+printf "${CYAN}║${NC}  ${YELLOW}%-52s${NC}  ${CYAN}║${NC}\n" "$TOKEN"
+echo -e "${CYAN}║${NC}                                                        ${CYAN}║${NC}"
+echo -e "${CYAN}╠════════════════════════════════════════════════════════╣${NC}"
+echo -e "${CYAN}║${NC}                                                        ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}  ${BOLD}Prochaines étapes :${NC}                                   ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}  1. Redémarrer : ${BOLD}sudo reboot${NC}                          ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}  2. Ouvrir l'interface et configurer Audiobookshelf    ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}  3. Coller le token ci-dessus dans Paramètres          ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}                                                        ${CYAN}║${NC}"
+echo -e "${CYAN}╚════════════════════════════════════════════════════════╝${NC}"
+echo ""
+
+# Sauvegarder le token dans un fichier pour référence
+echo "$TOKEN" > /home/${USER}/audiobox-token.txt
+chown ${USER}:${USER} /home/${USER}/audiobox-token.txt 2>/dev/null || true
+echo -e "${GREEN}[✓]${NC} Token sauvegardé dans : /home/${USER}/audiobox-token.txt"
+echo ""
