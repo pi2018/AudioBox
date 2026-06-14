@@ -82,7 +82,8 @@ async def start_scan():
         )
 
         # Envoyer les commandes et attendre
-        commands = b"scan on\n"
+        proc.stdin.write(b"scan on\n")
+        await proc.stdin.drain()
         try:
             await asyncio.wait_for(
                 asyncio.sleep(8),  # Scanner 8 secondes
