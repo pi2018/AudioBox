@@ -197,6 +197,7 @@ cp "$SCRIPT_DIR/system/jv-backend.service" /etc/systemd/system/
 cp "$SCRIPT_DIR/system/jv-kiosk.service"   /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable jv-backend
+systemctl disable jv-kiosk 2>/dev/null || true
 systemctl enable jv-kiosk
 log "Services installés et activés"
 
@@ -284,7 +285,7 @@ warn "Conservez le token en lieu sûr."
 # AJOUTS v1.3.0 — volume, sudoers, splash, script démarrage
 # ════════════════════════════════════════════════════════════
 
-# ── Volume ALSA bloqué à 100% dans le service ──────────────
+
 title "Configuration volume ALSA"
 if ! grep -q "amixer set Master" /etc/systemd/system/jv-backend.service; then
   sed -i '/\[Service\]/a ExecStartPre=-/usr/bin/amixer set PCM 100%
