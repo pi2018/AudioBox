@@ -333,15 +333,17 @@ chmod +x /home/${USER}/start-audiobox-x.sh
 chown ${USER}:${USER} /home/${USER}/start-audiobox-x.sh
 
 # .bashrc lance startx sur tty1
-if ! grep -q "start-audiobox-x.sh" /home/${USER}/.bashrc; then
-  cat >> /home/${USER}/.bashrc << EOF
+# Nettoyer les anciens blocs startx puis ajouter le bon
+sed -i '/# AudioBox - lancement X/,/^fi$/d' /home/${USER}/.bashrc 2>/dev/null || true
+sed -i '/exec startx/d' /home/${USER}/.bashrc 2>/dev/null || true
+cat >> /home/${USER}/.bashrc << 'BASHEOF'
 
 # AudioBox - lancement X sur tty1
-if [[ -z "\${DISPLAY:-}" ]] && [[ "\$(tty 2>/dev/null)" == "/dev/tty1" ]]; then
-    exec startx /home/${USER}/start-audiobox-x.sh -- -nocursor 2>/dev/null
+if [[ -z "${DISPLAY:-}" ]] && [[ "$(tty 2>/dev/null)" == "/dev/tty1" ]]; then
+    exec startx /home/USERPLACEHOLDER/start-audiobox-x.sh -- -nocursor 2>/dev/null
 fi
-EOF
-fi
+BASHEOF
+sed -i "s/USERPLACEHOLDER/${USER}/g" /home/${USER}/.bashrc
 log "Script de démarrage configuré"
 
 # ── Splash screen boot ─────────────────────────────────────
@@ -368,5 +370,26 @@ EOF
 else
   warn "splash.png absent - splash boot non configuré"
 fi
+
+
+# ── Bluetooth : déblocage automatique au démarrage ─────────
+title "Configuration Bluetooth"
+cat > /etc/systemd/system/audiobox-bluetooth.service << 'EOF'
+[Unit]
+Description=AudioBox Bluetooth unblock
+After=bluetooth.service
+Wants=bluetooth.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/rfkill unblock bluetooth
+ExecStartPost=/bin/sh -c 'sleep 2; bluetoothctl power on || true'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl enable audiobox-bluetooth 2>/dev/null || true
+log "Bluetooth configuré (déblocage auto)"
 
 log "Installation v1.3.0 complète !"
