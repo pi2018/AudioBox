@@ -279,3 +279,93 @@ echo "  1. Token dashboard : ${BOLD}journalctl -u jv-backend | grep 'Token'${NC}
 echo "  2. Dashboard       : ${BOLD}http://${IP}:8000${NC}"
 echo ""
 warn "Conservez le token en lieu sûr."
+
+# ════════════════════════════════════════════════════════════
+# AJOUTS v1.3.0 — volume, sudoers, splash, script démarrage
+# ════════════════════════════════════════════════════════════
+
+# ── Volume ALSA bloqué à 100% dans le service ──────────────
+title "Configuration volume ALSA"
+if ! grep -q "amixer set Master" /etc/systemd/system/jv-backend.service; then
+  sed -i '/\[Service\]/a ExecStartPre=/usr/bin/amixer set Master 100%' /etc/systemd/system/jv-backend.service
+  systemctl daemon-reload
+  log "Volume ALSA configuré à 100%"
+fi
+
+# ── Sudoers NOPASSWD ───────────────────────────────────────
+title "Configuration sudoers"
+cat > /etc/sudoers.d/audiobox << EOF
+${USER} ALL=(ALL) NOPASSWD: /usr/bin/systemctl start jv-backend
+${USER} ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop jv-backend
+${USER} ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart jv-backend
+${USER} ALL=(ALL) NOPASSWD: /usr/sbin/reboot
+${USER} ALL=(ALL) NOPASSWD: /usr/sbin/shutdown
+EOF
+chmod 0440 /etc/sudoers.d/audiobox
+log "Sudoers configuré (NOPASSWD pour backend + reboot/shutdown)"
+
+# ── Permissions X ──────────────────────────────────────────
+echo "allowed_users=anybody" > /etc/X11/Xwrapper.config
+
+# ── Script de démarrage X ──────────────────────────────────
+title "Script de démarrage"
+cat > /home/${USER}/start-audiobox-x.sh << 'EOF'
+#!/bin/bash
+openbox &
+sleep 1
+xset s off
+xset -dpms
+systemctl --user start pipewire pipewire-pulse wireplumber 2>/dev/null || true
+sudo systemctl start jv-backend 2>/dev/null || true
+DISPLAY=:0 exec chromium \
+  --kiosk \
+  --noerrdialogs \
+  --disable-infobars \
+  --disable-session-crashed-bubble \
+  --disable-restore-session-state \
+  --touch-events=enabled \
+  --no-first-run \
+  --check-for-update-interval=31536000 \
+  --app=file:///opt/jv/frontend/splash.html
+EOF
+chmod +x /home/${USER}/start-audiobox-x.sh
+chown ${USER}:${USER} /home/${USER}/start-audiobox-x.sh
+
+# .bashrc lance startx sur tty1
+if ! grep -q "start-audiobox-x.sh" /home/${USER}/.bashrc; then
+  cat >> /home/${USER}/.bashrc << EOF
+
+# AudioBox - lancement X sur tty1
+if [[ -z "\${DISPLAY:-}" ]] && [[ "\$(tty 2>/dev/null)" == "/dev/tty1" ]]; then
+    exec startx /home/${USER}/start-audiobox-x.sh -- -nocursor 2>/dev/null
+fi
+EOF
+fi
+log "Script de démarrage configuré"
+
+# ── Splash screen boot ─────────────────────────────────────
+title "Splash screen"
+if [ -f "$SCRIPT_DIR/system/splash.png" ]; then
+  cp "$SCRIPT_DIR/system/splash.png" /boot/splash.png
+  cat > /etc/systemd/system/audiobox-splash.service << EOF
+[Unit]
+Description=AudioBox Splash Logo
+DefaultDependencies=no
+After=local-fs.target
+Before=getty@tty1.service
+
+[Service]
+Type=forking
+ExecStart=/usr/bin/fbi -d /dev/fb0 -T 1 --noverbose -a --timeout 0 /boot/splash.png
+ExecStop=/usr/bin/killall fbi
+
+[Install]
+WantedBy=sysinit.target
+EOF
+  systemctl enable audiobox-splash 2>/dev/null || true
+  log "Splash screen configuré"
+else
+  warn "splash.png absent - splash boot non configuré"
+fi
+
+log "Installation v1.3.0 complète !"
