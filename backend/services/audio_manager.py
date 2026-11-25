@@ -52,6 +52,9 @@ class AudioManager:
 
         if start_time > 0:
             cmd.append(f"--start={start_time}")
+        # « -- » : tout ce qui suit est un fichier, jamais une option. Sans lui, une
+        # adresse commençant par « --script=… » aurait été comprise comme une option.
+        cmd.append("--")
         cmd.append(uri)
 
         import os
@@ -166,31 +169,46 @@ class AudioManager:
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     async def _mpv_cmd(self, cmd: dict) -> dict:
+        """
+        Envoie une commande à mpv et rend SA réponse.
+
+        mpv envoie aussi des événements (« pause », « playback-restart »…) sur la même
+        connexion. Avant, la première ligne lue était prise pour la réponse : un
+        événement passait parfois à sa place, et la position affichée retombait à 0.
+        On numérote la demande et on attend la ligne qui porte ce numéro.
+        """
         if not os.path.exists(MPV_SOCKET):
             return {}
+        self._num = getattr(self, "_num", 0) + 1
+        demande = dict(cmd, request_id=self._num)
+        writer = None
         try:
             reader, writer = await asyncio.wait_for(
                 asyncio.open_unix_connection(MPV_SOCKET), timeout=2
             )
-            writer.write((json.dumps(cmd) + "\n").encode())
+            writer.write((json.dumps(demande) + "\n").encode())
             await writer.drain()
-            line = await asyncio.wait_for(reader.readline(), timeout=2)
-            writer.close()
-            try:
-                await writer.wait_closed()
-            except Exception:
-                pass
-            return json.loads(line.decode())
-        except (asyncio.TimeoutError, ConnectionRefusedError, json.JSONDecodeError, OSError):
+            for _ in range(50):
+                line = await asyncio.wait_for(reader.readline(), timeout=2)
+                if not line:
+                    return {}
+                try:
+                    rep = json.loads(line.decode())
+                except json.JSONDecodeError:
+                    continue
+                if rep.get("request_id") == self._num or ("error" in rep and "event" not in rep and "request_id" not in rep):
+                    return rep
             return {}
+        except (asyncio.TimeoutError, ConnectionRefusedError, OSError):
+            return {}
+        finally:
+            if writer is not None:
+                writer.close()
+                try:
+                    await writer.wait_closed()
+                except Exception:
+                    pass
 
     async def _resolve_sink(self, output: str) -> str:
-        """Résout le nom de sink PipeWire pour la sortie demandée."""
-        if output in ("jack", "auto", ""):
-            return "auto"
-        if output.startswith("bluetooth:"):
-            mac = output.split(":", 1)[1]
-            # Format PipeWire Bluetooth : bluez_output.MAC.1
-            safe_mac = mac.replace(":", "_")
-            return f"pipewire/bluez_output.{safe_mac}.1"
+        """La sortie audio : la sortie par défaut de PipeWire (jack ou HDMI)."""
         return "auto"

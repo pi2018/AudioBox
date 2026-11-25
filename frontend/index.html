@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>AudioBox</title>
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#0d0d0d">
+<meta name="theme-color" content="#0E0F13">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -38,7 +40,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
   font-size:17px;position:relative;
 }
 .sb-item:hover{background:rgba(255,255,255,0.06);color:var(--txt2)}
-.sb-item.active{background:rgba(124,106,247,0.15);color:var(--acc)}
+.sb-item.active{background:var(--acc-soft);color:var(--acc)}
 .sb-item .sb-tooltip{
   position:absolute;left:54px;background:#1e1e30;color:var(--txt);
   font-size:11px;padding:4px 8px;border-radius:6px;white-space:nowrap;
@@ -160,7 +162,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
   overflow:hidden;
 }
 #pd-cover img{width:100%;height:100%;object-fit:cover}
-.pv-source-badge{font-size:11px;padding:3px 10px;background:rgba(124,106,247,0.15);color:var(--acc2);border-radius:20px;border:0.5px solid rgba(124,106,247,0.3)}
+.pv-source-badge{font-size:11px;padding:3px 10px;background:var(--acc-soft);color:var(--acc2);border-radius:20px;border:0.5px solid var(--acc-line)}
 .pv-right{flex:1;min-width:0}
 #pd-title{font-size:20px;font-weight:500;color:var(--txt);margin-bottom:4px;line-height:1.3}
 #pd-author{font-size:14px;color:var(--txt3);margin-bottom:6px}
@@ -190,7 +192,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
 .radios-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
 .radio-card{background:var(--bg1);border:0.5px solid rgba(255,255,255,0.06);border-radius:var(--rsm);padding:14px 10px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:var(--tr);position:relative;text-align:center}
 .radio-card:hover{border-color:var(--acc)}
-.radio-card.playing{border-color:var(--acc);background:rgba(124,106,247,0.08)}
+.radio-card.playing{border-color:var(--acc);background:color-mix(in srgb, var(--acc) 8%, transparent)}
 .radio-card.favorite{border-color:var(--amber)}
 .radio-icon{font-size:36px;line-height:1;width:52px;height:52px;display:flex;align-items:center;justify-content:center}
 .radio-name{font-size:11px;font-weight:500;color:var(--txt);text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -287,10 +289,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
 .eq-val{font-size:10px;color:var(--acc2);font-weight:500;min-width:28px;text-align:center}
 
 /* ══ BT ══════════════════════════════════════════ */
-.bt-device{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border-radius:var(--rsm);margin-bottom:7px}
-.bt-device-name{flex:1;font-size:13px;color:var(--txt)}
-.bt-device-addr{font-size:11px;color:var(--txt3)}
-.bt-connected{font-size:10px;padding:2px 7px;background:rgba(29,158,117,.15);color:var(--green);border-radius:10px}
 
 /* ══ MOBILE S23 ULTRA (393px) ═══════════════════════ */
 @media (max-width: 480px) {
@@ -359,6 +357,69 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
   /* Paramètres mobile */
   .settings-section { padding: 12px }
 }
+
+/* ══ v1.4 : design « Studio sombre » et thèmes de couleur ══════════════════
+   Chaque thème ne change que quelques variables : tout le reste suit. */
+:root{
+  --bg0:#0E0F13;--bg1:#15171D;--bg2:#1C1E26;--bg3:#2A2C36;--bg4:#343744;
+  --txt:#ECECF1;--txt2:#A3A4B2;--txt3:#8A8B99;
+  --acc:#A99BFF;--acc2:#C9BFFF;--acc-ink:#14111F;
+  --acc-soft:#262236;--acc-line:#3A3360;--cover:#2B2546;--cover-ink:#ECE8FF;
+  --sb:76px;
+}
+[data-theme="menthe"]{--acc:#7FD1B9;--acc2:#A8E3D1;--acc-ink:#0F1D19;--acc-soft:#1C2E2A;--acc-line:#2C4A43;--cover:#21403A;--cover-ink:#E3F5EF}
+[data-theme="ambre"] {--acc:#F2A65A;--acc2:#F7C38E;--acc-ink:#1F1408;--acc-soft:#33261A;--acc-line:#56402A;--cover:#4A341F;--cover-ink:#FCEBD8}
+[data-theme="corail"]{--acc:#FF8A7A;--acc2:#FFB1A6;--acc-ink:#24110E;--acc-soft:#36211F;--acc-line:#5A3530;--cover:#4C2A26;--cover-ink:#FFE6E2}
+[data-theme="bleu"]  {--acc:#6EA8FF;--acc2:#A3C7FF;--acc-ink:#0C1626;--acc-soft:#1B2638;--acc-line:#2C3F5E;--cover:#1F3352;--cover-ink:#E3EEFF}
+[data-theme="rose"]  {--acc:#F48FC6;--acc2:#F8B6DA;--acc-ink:#24101B;--acc-soft:#33202C;--acc-line:#56344A;--cover:#4A2740;--cover-ink:#FDE6F3}
+
+html,body{font-family:Inter,-apple-system,'Segoe UI',sans-serif;background:var(--bg0)}
+#pd-title,h1,h2,h3{font-family:'Space Grotesk',Inter,sans-serif}
+
+/* Barre latérale : grandes cibles tactiles, icônes au trait */
+#sidebar{background:var(--bg1);border-right:0;padding:14px 0;gap:6px}
+.sb-logo{display:none}
+.sb-item{width:56px;height:56px;border-radius:14px;color:var(--txt3)}
+.sb-item svg{width:24px;height:24px}
+.sb-item:hover{background:rgba(255,255,255,0.04);color:var(--txt)}
+.sb-item.active{background:var(--acc-soft);color:var(--acc)}
+.sb-item .sb-tooltip{left:66px}
+
+/* Écran de lecture : grande pochette, gros boutons ronds */
+.player-volumio{gap:28px;align-items:center;padding:8px 4px}
+#pd-cover{width:300px !important;height:300px !important;border-radius:18px !important;background:var(--cover) !important;color:var(--cover-ink);overflow:hidden}
+.pv-source-badge{background:var(--acc-soft);color:var(--acc);border:0;font-weight:600;letter-spacing:1px;text-transform:uppercase;font-size:11px;padding:5px 12px}
+#pd-title{font-size:26px;font-weight:700;line-height:1.15;margin-bottom:6px}
+#pd-author{font-size:15px;color:var(--txt2)}
+#pd-pct{color:var(--acc)}
+.pv-prog-track{height:6px;border-radius:3px;background:var(--bg3)}
+.pv-prog-fill{background:var(--acc);border-radius:3px}
+.pv-prog-times{font-size:12px;color:var(--txt2)}
+.pv-controls{gap:14px;margin:6px 0 18px 0}
+.pv-btn{width:52px;height:52px;border-radius:26px;background:var(--bg2);color:var(--txt);font-size:15px;font-weight:600;font-family:Inter,sans-serif;padding:0}
+.pv-btn:hover{background:var(--bg3);color:var(--txt)}
+#btn-read{width:78px;height:78px;border-radius:39px;background:var(--acc);color:var(--acc-ink);font-size:28px}
+#btn-read:hover{background:var(--acc2)}
+.pv-vol-fill{background:var(--acc)}
+
+/* Barre du bas */
+#player-bar{background:var(--bg1);border-top:0}
+#pb-prog-fill{background:var(--acc)}
+#btn-playpause{background:var(--acc) !important;color:var(--acc-ink) !important;width:44px !important;height:44px !important}
+#btn-playpause:hover{background:var(--acc2) !important}
+.pb-btn{width:44px;height:44px;border-radius:22px;color:var(--txt2)}
+.btn-primary{background:var(--acc);color:var(--acc-ink)}
+.btn-primary:hover{background:var(--acc2)}
+
+/* Choix des couleurs */
+#theme-panel{position:fixed;left:86px;bottom:96px;z-index:200;width:400px;background:#1A1C23;border:1px solid #2C2F3A;border-radius:18px;padding:16px 18px;box-shadow:0 18px 40px rgba(0,0,0,.5);display:none;flex-direction:column;gap:12px}
+#theme-panel.open{display:flex}
+.theme-head{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:600}
+#theme-name{color:var(--acc);font-weight:500;font-size:13px}
+.theme-swatches{display:flex;gap:10px;flex-wrap:wrap}
+.theme-sw{width:44px;height:44px;border-radius:22px;border:3px solid transparent;cursor:pointer;padding:0}
+.theme-sw.on{border-color:#fff}
+.theme-help{font-size:12px;color:var(--txt2)}
 </style>
 </head>
 <body>
@@ -369,26 +430,29 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
   <div id="sidebar">
     <div class="sb-logo">🎵</div>
     <div class="sb-item active" id="nav-home" onclick="showScreen('home')">
-      🏠<span class="sb-tooltip">Accueil</span>
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg><span class="sb-tooltip">Accueil</span>
     </div>
     <div class="sb-item" id="nav-abs" onclick="showScreen('abs')">
-      📚<span class="sb-tooltip">Livres audio</span>
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg><span class="sb-tooltip">Livres audio</span>
     </div>
     <div class="sb-item" id="nav-radios" onclick="showScreen('radios')">
-      📻<span class="sb-tooltip">Web Radio</span>
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="m7 8 10-5"/><circle cx="15" cy="14.5" r="2.5"/><path d="M6 13h4M6 16h4"/></svg><span class="sb-tooltip">Web Radio</span>
     </div>
     <div class="sb-item" id="nav-nas" onclick="showScreen('nas')">
-      🎵<span class="sb-tooltip">Musique NAS</span>
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="sb-tooltip">Musique NAS</span>
     </div>
     <div class="sb-item" id="nav-youtube" onclick="showScreen('youtube')">
-      ▶️<span class="sb-tooltip">YouTube</span>
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="4"/><path d="m10 9 5 3-5 3z"/></svg><span class="sb-tooltip">YouTube</span>
     </div>
     <div class="sb-item" id="nav-podcasts" onclick="showScreen('podcasts')">
-      🎙️<span class="sb-tooltip">Podcasts</span>
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5"/></svg><span class="sb-tooltip">Podcasts</span>
     </div>
     <div class="sb-spacer"></div>
+    <div class="sb-item" id="nav-theme" onclick="toggleThemePanel(event)">
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 1 10-10c0 2.8-2.2 4-4 4h-2.5a2 2 0 0 0-1.5 3.3A2 2 0 0 1 12 22z"/><circle cx="7.5" cy="10.5" r="1.2"/><circle cx="12" cy="7" r="1.2"/><circle cx="16.5" cy="10.5" r="1.2"/></svg><span class="sb-tooltip">Couleurs</span>
+    </div>
     <div class="sb-item" id="nav-settings" onclick="showScreen('settings')">
-      ⚙️<span class="sb-tooltip">Paramètres</span>
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg><span class="sb-tooltip">Paramètres</span>
     </div>
   </div>
 
@@ -498,10 +562,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
               </div>
             </div>
             <div class="pv-controls">
-              <button class="pv-btn" onclick="seekRel(-30)" title="-30s">⏪</button>
+              <button class="pv-btn" onclick="seekRel(-30)" title="-30s" aria-label="Reculer de 30 secondes">−30</button>
               <button class="pv-btn" id="btn-stop" onclick="stopBook()" title="Stop">⏹</button>
               <button class="pv-btn" id="btn-read" onclick="startBook()">▶</button>
-              <button class="pv-btn" onclick="seekRel(+30)" title="+30s">⏩</button>
+              <button class="pv-btn" onclick="seekRel(+30)" title="+30s" aria-label="Avancer de 30 secondes">+30</button>
             </div>
             <div class="pv-vol-row">
               <span class="pv-vol-icon">🔈</span>
@@ -670,7 +734,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
             <select id="cfg-output" onchange="localStorage.setItem('ab_output',this.value)">
               <option value="jack">Jack 3.5mm</option>
             </select>
-            <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="loadBTOutputs()">↻ Rafraîchir</button>
           </div>
           <div class="field"><label>Volume par défaut : <span id="vol-val">80</span>%</label>
             <input type="range" min="0" max="100" value="80" style="width:100%" oninput="document.getElementById('vol-val').textContent=this.value;setVolume(this.value)">
@@ -689,18 +752,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
             <button class="eq-preset-btn" onclick="applyEQPreset('rock')">Rock</button>
           </div>
           <div class="eq-bands" id="eq-bands"></div>
-        </div>
-
-        <div class="settings-section">
-          <h3>🔵 Bluetooth</h3>
-          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-            <button class="btn btn-ghost btn-sm" id="btn-bt-scan" onclick="btScan()">🔍 Scanner (20s)</button>
-            <button class="btn btn-ghost btn-sm" id="btn-bt-stop" onclick="btStopScan()" style="display:none">⏹ Arrêter scan</button>
-            <button class="btn btn-ghost btn-sm" onclick="loadBT()">↻ Rafraîchir</button>
-            <button class="btn btn-danger btn-sm" onclick="btDisableAll()">🔵 Désactiver BT</button>
-            <button class="btn btn-ghost btn-sm" onclick="btEnableAll()">🔵 Activer BT</button>
-          </div>
-          <div id="bt-devices"></div>
         </div>
 
         </div><!-- /stab-content-sources -->
@@ -730,17 +781,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
           <button class="btn btn-primary btn-sm" onclick="addWebhook()">Ajouter webhook</button>
         </div>
 
-        <div class="settings-section">
-          <h3>🎵 Spotify Connect</h3>
-          <p style="font-size:13px;color:var(--txt2);margin-bottom:12px">Sélectionnez <strong>AudioBox</strong> comme enceinte dans Spotify.</p>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-ghost btn-sm" onclick="spotifyStatus()">📡 État</button>
-            <button class="btn btn-primary btn-sm" onclick="spotifyStart()">▶ Démarrer</button>
-            <button class="btn btn-ghost btn-sm" onclick="spotifyStop()">⏹ Arrêter</button>
-          </div>
-          <div id="spotify-status" style="font-size:12px;color:var(--txt3);margin-top:8px"></div>
-        </div>
-
         </div><!-- /stab-content-domotique -->
 
         <!-- Onglet Système -->
@@ -763,8 +803,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
 
         <div class="settings-section">
           <h3>⚙️ Mise à jour</h3>
+          <div id="ab-version" style="font-size:13px;color:var(--txt2);margin-bottom:10px">AudioBox —</div>
+          <button class="btn btn-primary btn-sm" onclick="updateAudioBox()" style="margin-bottom:14px">⬆️ Mettre à jour AudioBox</button>
           <div id="ytdlp-info" style="font-size:13px;color:var(--txt2);margin-bottom:10px">—</div>
-          <button class="btn btn-primary btn-sm" onclick="updateYtdlp()">⬆️ Mettre à jour yt-dlp</button>
+          <button class="btn btn-ghost btn-sm" onclick="updateYtdlp()">⬆️ Mettre à jour yt-dlp</button>
         </div>
 
         <div class="settings-section">
@@ -806,7 +848,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
             <h3>📄 Licence & Informations légales</h3>
 
             <!-- Badge licence -->
-            <div style="display:flex;align-items:center;gap:12px;padding:14px;background:rgba(124,106,247,0.08);border:1px solid rgba(124,106,247,0.3);border-radius:var(--rsm);margin-bottom:16px">
+            <div style="display:flex;align-items:center;gap:12px;padding:14px;background:color-mix(in srgb, var(--acc) 8%, transparent);border:1px solid var(--acc-line);border-radius:var(--rsm);margin-bottom:16px">
               <div style="font-size:36px">⚖️</div>
               <div>
                 <div style="font-size:14px;font-weight:600;color:var(--acc2)">GNU GPL v3 — Usage personnel uniquement</div>
@@ -876,6 +918,12 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
     </div><!-- /screens -->
 
     <!-- PLAYER BAR style ABS -->
+    <div id="theme-panel" role="dialog" aria-label="Couleur de l'interface">
+      <div class="theme-head"><span>Couleur de l'interface</span><span id="theme-name"></span></div>
+      <div class="theme-swatches" id="theme-swatches"></div>
+      <div class="theme-help">Le bouton lecture, la barre, la pochette et l'icône active changent tout de suite. Retenu sur cet écran.</div>
+    </div>
+
     <div id="player-bar">
       <!-- Barre de progression -->
       <div id="pb-progress-bar" onclick="seekToClickBar(event,false)">
@@ -969,6 +1017,14 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
 // État global
 // ══════════════════════════════════════════════════════
 let token    = localStorage.getItem('ab_token') || '';
+
+// Tout texte venu de l'extérieur (YouTube, radios, podcasts, NAS, ABS…) passe par
+// esc() avant d'être mis dans la page : sinon un titre piégé pouvait exécuter du code
+// sur l'écran de la box. jsArg() sert pour les paramètres des onclick="…".
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"'`]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'}[c]));
+}
+function jsArg(v) { return esc(JSON.stringify(String(v ?? ''))); }
 let isPlaying = false;
 window._absItems = [];  // Items ABS globaux
 let pState   = {playing:false,paused:false,position:0,duration:0,volume:80};
@@ -1080,7 +1136,7 @@ async function loadRecent() {
       api('GET','/abs/stream/'+itemId).then(s=>{const e=document.getElementById('rt-'+itemId);if(e)e.textContent=s.title||itemId;}).catch(()=>{});
     });
   } catch(e) {
-    recentList.innerHTML = '<div style="color:var(--txt3);font-size:13px">Erreur: '+e.message+'</div>';
+    recentList.innerHTML = '<div style="color:var(--txt3);font-size:13px">Erreur: '+esc(e.message)+'</div>';
   }
 }
 
@@ -1170,12 +1226,12 @@ async function loadABS(forceReload = false) {
         card.addEventListener('click', function() { openBook(window._absItems[this.dataset.idx]); });
         card.innerHTML = `
           <div class="abs-prog-cover">
-            <img src="/api/abs/cover/${item.id}" onerror="this.parentElement.textContent='📚'" loading="lazy">
+            <img src="/api/abs/cover/${encodeURIComponent(item.id)}" onerror="this.parentElement.textContent='📚'" loading="lazy">
             <div class="abs-prog-pct">${pct}%</div>
           </div>
           <div class="abs-prog-info">
-            <div class="abs-prog-title" title="${title.replace(/"/g,"&quot;")}">${title}</div>
-            <div class="abs-prog-author">${author}</div>
+            <div class="abs-prog-title" title="${esc(title)}">${esc(title)}</div>
+            <div class="abs-prog-author">${esc(author)}</div>
             <div class="abs-prog-bar"><div class="abs-prog-bar-fill" style="width:${pct}%"></div></div>
           </div>`;
         progRow.appendChild(card);
@@ -1208,11 +1264,11 @@ async function loadABS(forceReload = false) {
       card.addEventListener("click", function(){ var idx=this.dataset.idx; openBook(window._absItems ? window._absItems[idx] : item); });
       card.innerHTML = `
         <div class="book-cover">
-          <img src="/api/abs/cover/${item.id}" onerror="this.parentElement.textContent='📚'" loading="lazy">
+          <img src="/api/abs/cover/${encodeURIComponent(item.id)}" onerror="this.parentElement.textContent='📚'" loading="lazy">
         </div>
         <div class="book-info">
-          <div class="book-title" title="${title}">${title}</div>
-          <div class="book-author">${author}</div>
+          <div class="book-title" title="${esc(title)}">${esc(title)}</div>
+          <div class="book-author">${esc(author)}</div>
           <div class="book-progress"><div class="book-progress-fill" style="width:${pct}%"></div></div>
         </div>`;
       grid.appendChild(card);
@@ -1220,7 +1276,7 @@ async function loadABS(forceReload = false) {
     el.appendChild(grid);
 
   } catch(e) {
-    el.innerHTML      = `<div class="empty">⚠️<span>${e.message}</span></div>`;
+    el.innerHTML      = `<div class="empty">⚠️<span>${esc(e.message)}</span></div>`;
     progRow.innerHTML = '';
   }
 }
@@ -1280,7 +1336,6 @@ async function startBook() {
     await api('POST', '/player/play', {
       source:     'abs',
       uri:        stream.url,
-      http_token: stream.token,
       item_id:    itemId,
       duration:   Number(stream.duration || currentItem.media?.duration || 0),
       title:      String(stream.title || currentItem.media?.metadata?.title || ''),
@@ -1322,18 +1377,18 @@ async function openBook(item) {
 
   // Pochette
   const covEl = document.getElementById('pd-cover');
-  covEl.innerHTML = `<img src="/api/abs/cover/${item.id}" onerror="this.parentElement.textContent='📚'" style="width:100%;height:100%;object-fit:cover">`;
+  covEl.innerHTML = `<img src="/api/abs/cover/${encodeURIComponent(item.id)}" onerror="this.parentElement.textContent='📚'" style="width:100%;height:100%;object-fit:cover">`;
   // Fond dynamique
   const bgEl = document.getElementById('player-bg');
   if (bgEl) {
-    bgEl.style.backgroundImage = `url('/api/abs/cover/${item.id}')`;
+    bgEl.style.backgroundImage = `url('/api/abs/cover/${encodeURIComponent(item.id)}')`;
     bgEl.classList.add('active');
   }
 
 // badges supprimés
 
   // Mettre à jour la player bar
-  updatePB(title, author, `/api/abs/cover/${item.id}`);
+  updatePB(title, author, `/api/abs/cover/${encodeURIComponent(item.id)}`);
 }
 
 // Proxy cover ABS
@@ -1375,7 +1430,7 @@ async function browseNAS(path) {
       div.className = 'nas-item';
       div.innerHTML = `
         <span class="nas-icon">${item.is_dir ? '📁' : isAudio ? '🎵' : '📄'}</span>
-        <span class="nas-name" title="${item.name}">${item.name}</span>`;
+        <span class="nas-name" title="${esc(item.name)}">${esc(item.name)}</span>`;
 
       if (item.is_dir) {
         div.onclick = () => browseNAS(item.path);
@@ -1385,7 +1440,7 @@ async function browseNAS(path) {
       content.appendChild(div);
     });
   } catch(e) {
-    content.innerHTML = `<div class="empty">⚠️<span>${e.message}</span></div>`;
+    content.innerHTML = `<div class="empty">⚠️<span>${esc(e.message)}</span></div>`;
   }
 }
 
@@ -1393,8 +1448,8 @@ function renderBreadcrumb() {
   const bc = document.getElementById('nas-breadcrumb');
   bc.innerHTML = nasCrumbs.map((c,i) =>
     i < nasCrumbs.length-1
-      ? `<span onclick="nasCrumbs=nasCrumbs.slice(0,${i+1});browseNAS('${c.path}')">${c.label}</span><span class="sep">›</span>`
-      : `<span>${c.label}</span>`
+      ? `<span onclick="nasCrumbs=nasCrumbs.slice(0,${i+1});browseNAS(${jsArg(c.path)})">${esc(c.label)}</span><span class="sep">›</span>`
+      : `<span>${esc(c.label)}</span>`
   ).join('');
 }
 
@@ -1427,16 +1482,16 @@ async function searchYT() {
       d.onclick = () => playYT(r.url, r.title);
       d.innerHTML = `
         <div class="yt-thumb">
-          ${r.thumbnail ? `<img src="${r.thumbnail}" onerror="this.parentElement.textContent='▶'">` : '▶'}
+          ${r.thumbnail ? `<img src="${esc(r.thumbnail)}" onerror="this.parentElement.textContent='▶'">` : '▶'}
         </div>
         <div class="yt-info">
-          <div class="yt-title">${r.title}</div>
+          <div class="yt-title">${esc(r.title)}</div>
           <div class="yt-dur">${r.duration ? fmtTime(r.duration) : ''}</div>
         </div>`;
       el.appendChild(d);
     });
   } catch(e) {
-    el.innerHTML = `<div class="empty">⚠️<span>${e.message}</span></div>`;
+    el.innerHTML = `<div class="empty">⚠️<span>${esc(e.message)}</span></div>`;
   }
 }
 
@@ -1656,23 +1711,23 @@ async function tunerSearch() {
       div.className = 'tuner-card';
       div.innerHTML = `
         <div class="tuner-favicon">
-          ${s.favicon ? `<img src="${s.favicon}" onerror="this.parentElement.textContent='📻'">` : '📻'}
+          ${s.favicon ? `<img src="${esc(s.favicon)}" onerror="this.parentElement.textContent='📻'">` : '📻'}
         </div>
         <div class="tuner-info">
-          <div class="tuner-name">${s.name}</div>
+          <div class="tuner-name">${esc(s.name)}</div>
           <div class="tuner-meta">
-            ${s.country || ''} ${s.tags ? '· ' + s.tags.split(',').slice(0,3).join(', ') : ''}
+            ${esc(s.country || '')} ${s.tags ? '· ' + esc(s.tags.split(',').slice(0,3).join(', ')) : ''}
             ${s.bitrate ? '· ' + s.bitrate + 'kbps' : ''}
           </div>
         </div>
         <div class="tuner-actions">
-          <button class="btn btn-ghost btn-sm" onclick="tunerPlay('${streamUrl}','${s.name.replace(/'/g,"\'")}')">▶</button>
-          <button class="btn btn-primary btn-sm" onclick="tunerSave('${streamUrl}','${s.name.replace(/'/g,"\'")}','${(s.favicon||'').replace(/'/g,"\'")}')">⭐</button>
+          <button class="btn btn-ghost btn-sm" onclick="tunerPlay(${jsArg(streamUrl)},${jsArg(s.name)})">▶</button>
+          <button class="btn btn-primary btn-sm" onclick="tunerSave(${jsArg(streamUrl)},${jsArg(s.name)},${jsArg(s.favicon||'')})">⭐</button>
         </div>`;
       results.appendChild(div);
     });
   } catch(e) {
-    results.innerHTML = `<div class="empty">⚠️<span>Erreur: ${e.message}</span></div>`;
+    results.innerHTML = `<div class="empty">⚠️<span>Erreur: ${esc(e.message)}</span></div>`;
   }
 }
 
@@ -1706,7 +1761,7 @@ async function loadPodcasts() {
     card.onclick = () => showPodcastEpisodes(p, i);
     card.innerHTML = `
       <div class="radio-icon">🎙️</div>
-      <div class="radio-name">${p.title || p.url}</div>
+      <div class="radio-name">${esc(p.title || p.url)}</div>
       <button class="radio-del" onclick="event.stopPropagation();removePodcast(${i})">✕</button>`;
     grid.appendChild(card);
   });
@@ -1728,10 +1783,8 @@ async function addPodcast() {
 }
 
 async function fetchRSS(url) {
-  // Utiliser un proxy CORS pour les flux RSS externes
-  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-  const r = await fetch(proxyUrl);
-  const data = await r.json();
+  // La box télécharge elle-même le flux (avant : un service public étranger).
+  const data = await api('GET', `/podcast/rss?url=${encodeURIComponent(url)}`);
   const xml = data.contents;
   const parser = new DOMParser();
   const doc = parser.parseFromString(xml, 'text/xml');
@@ -1764,8 +1817,8 @@ function showPodcastEpisodes(podcast, idx) {
     div.innerHTML = `
       <div class="yt-thumb">🎙️</div>
       <div class="yt-info">
-        <div class="yt-title">${ep.title}</div>
-        <div class="yt-dur">${ep.pubDate ? new Date(ep.pubDate).toLocaleDateString('fr-FR') : ''} ${ep.duration || ''}</div>
+        <div class="yt-title">${esc(ep.title)}</div>
+        <div class="yt-dur">${ep.pubDate ? new Date(ep.pubDate).toLocaleDateString('fr-FR') : ''} ${esc(ep.duration || '')}</div>
       </div>`;
     list.appendChild(div);
   });
@@ -1857,13 +1910,13 @@ async function loadRadios() {
       // Logo : depuis la station, depuis le cache, ou emoji
       const favicon = s.favicon || logoCache[s.name] || '';
       const logoHtml = favicon
-        ? `<img src="${favicon}" onerror="this.outerHTML='📻'" style="width:52px;height:52px;border-radius:8px;object-fit:cover">`
+        ? `<img src="${esc(favicon)}" onerror="this.outerHTML='📻'" style="width:52px;height:52px;border-radius:8px;object-fit:cover">`
         : `<span id="radio-logo-${i}">📻</span>`;
 
       card.innerHTML = `
-        <button class="radio-fav" onclick="event.stopPropagation();toggleFavoriteRadio('${s.url}')" title="${isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}">${isFav ? '⭐' : '☆'}</button>
+        <button class="radio-fav" onclick="event.stopPropagation();toggleFavoriteRadio(${jsArg(s.url)})" title="${isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}">${isFav ? '⭐' : '☆'}</button>
         <div class="radio-icon">${logoHtml}</div>
-        <div class="radio-name">${s.name}</div>
+        <div class="radio-name">${esc(s.name)}</div>
         <button class="radio-del" onclick="event.stopPropagation();removeRadio(${i})">✕</button>`;
       grid.appendChild(card);
 
@@ -1874,13 +1927,13 @@ async function loadRadios() {
             logoCache[s.name] = url;
             localStorage.setItem('radio_logos', JSON.stringify(logoCache));
             const span = document.getElementById(`radio-logo-${i}`);
-            if (span) span.outerHTML = `<img src="${url}" onerror="this.outerHTML='📻'" style="width:52px;height:52px;border-radius:8px;object-fit:cover">`;
+            if (span) span.outerHTML = `<img src="${esc(url)}" onerror="this.outerHTML='📻'" style="width:52px;height:52px;border-radius:8px;object-fit:cover">`;
           }
         });
       }
     });
   } catch(e) {
-    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">⚠️<span>${e.message}</span></div>`;
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">⚠️<span>${esc(e.message)}</span></div>`;
   }
 }
 
@@ -1940,7 +1993,7 @@ function updatePB(title, author, coverSrc) {
 
   const cov = document.getElementById('pb-cover');
   if (typeof coverSrc === 'string' && coverSrc.startsWith('/')) {
-    cov.innerHTML = `<img src="${coverSrc}" onerror="this.parentElement.textContent='🎵'" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
+    cov.innerHTML = `<img src="${esc(coverSrc)}" onerror="this.parentElement.textContent='🎵'" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
   } else {
     cov.textContent = coverSrc || '🎵';
   }
@@ -2102,9 +2155,9 @@ async function loadWebhooks() {
     el.innerHTML = whs.map((w, i) => `
       <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg2);border-radius:var(--rsm);margin-bottom:6px">
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600">${w.name || 'Webhook'}</div>
-          <div style="font-size:11px;color:var(--txt3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${w.url}</div>
-          <div style="font-size:11px;color:var(--txt2)">${(w.events||[]).join(', ')}</div>
+          <div style="font-size:13px;font-weight:600">${esc(w.name || 'Webhook')}</div>
+          <div style="font-size:11px;color:var(--txt3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(w.url)}</div>
+          <div style="font-size:11px;color:var(--txt2)">${esc((w.events||[]).join(', '))}</div>
         </div>
         <button class="btn btn-danger btn-sm" onclick="removeWebhook(${i})">✕</button>
       </div>`).join('');
@@ -2138,23 +2191,7 @@ async function removeWebhook(idx) {
   loadWebhooks();
 }
 
-async function spotifyStatus() {
-  try {
-    const r = await fetch('/api/spotify/status');
-    const d = await r.json();
-    document.getElementById('spotify-status').textContent = d.running ? '✅ En cours' : '⭕ Arrêté';
-  } catch(e) { document.getElementById('spotify-status').textContent = 'Non installé — lancez setup-spotify.sh'; }
-}
-async function spotifyStart() {
-  await fetch('/api/spotify/start', {method:'POST'}).catch(()=>{});
-  setTimeout(spotifyStatus, 2000);
-  toast('Spotify Connect démarré');
-}
-async function spotifyStop() {
-  await fetch('/api/spotify/stop', {method:'POST'}).catch(()=>{});
-  setTimeout(spotifyStatus, 1000);
-  toast('Spotify Connect arrêté');
-}
+
 
 // ══════════════════════════════════════════════════════
 // SYSTÈME
@@ -2199,6 +2236,21 @@ async function sysRestartBackend() {
     await api('POST', '/system/restart-backend');
     toast('↻ Backend redémarre…');
   } catch(e) { toast('Erreur: ' + e.message); }
+}
+
+async function updateAudioBox() {
+  if (!confirm('Télécharger la dernière version et réinstaller AudioBox ? La musique s\'arrêtera quelques minutes.')) return;
+  try {
+    const r = await api('POST', '/system/update-audiobox');
+    toast(r.message || 'Mise à jour lancée');
+  } catch(e) { toast('Erreur: ' + e.message); }
+}
+
+async function loadVersion() {
+  try {
+    const v = await api('GET', '/system/version');
+    document.getElementById('ab-version').textContent = `AudioBox ${v.version || '?'}`;
+  } catch(e) {}
 }
 
 async function updateYtdlp() {
@@ -2433,7 +2485,7 @@ function renderChapters() {
       api('POST', '/player/seek', {position: ch.start}).catch(() => {});
       toast(`📑 ${ch.title}`);
     };
-    div.innerHTML = `<span>${ch.title || 'Chapitre ' + (i+1)}</span><span style="color:var(--txt3)">${fmtTime(ch.start)}</span>`;
+    div.innerHTML = `<span>${esc(ch.title || 'Chapitre ' + (i+1))}</span><span style="color:var(--txt3)">${fmtTime(ch.start)}</span>`;
     list.appendChild(div);
   });
 }
@@ -2538,11 +2590,10 @@ function saveToken(v) {
 }
 
 function initSettings() {
+  loadVersion();
   document.getElementById('cfg-token').value = token;
   document.getElementById('cfg-weather-lat').value = localStorage.getItem('weather_lat') || '49.6116';
   document.getElementById('cfg-weather-lon').value = localStorage.getItem('weather_lon') || '6.1319';
-  loadBT();
-  loadBTOutputs();
   loadSysStatus();
   initEQ();
   loadHAConfig();
@@ -2574,87 +2625,62 @@ async function mountNAS() {
   } catch(e) { toast('Erreur: ' + e.message); }
 }
 
-async function loadBT() {
-  const el = document.getElementById('bt-devices');
-  el.innerHTML = '<div class="empty" style="padding:12px 0"><div class="spinner"></div></div>';
-  try {
-    const devs = await api('GET', '/bluetooth/devices');
-    if (!devs.length) { el.innerHTML = '<div class="empty" style="padding:12px 0"><span>Aucun périphérique</span></div>'; return; }
-    el.innerHTML = devs.map(d => `
-      <div class="bt-device">
-        <div class="bt-dot ${d.connected ? 'on' : ''}"></div>
-        <div style="flex:1">
-          <div style="font-size:13px;font-weight:500">${d.name}</div>
-          <div style="font-size:11px;color:var(--txt3)">${d.mac}</div>
-        </div>
-        ${d.connected
-          ? `<button class="btn btn-ghost btn-sm" onclick="btDis('${d.mac}')">Déconnecter</button>`
-          : `<button class="btn btn-primary btn-sm" onclick="btCon('${d.mac}')">Connecter</button>`}
-      </div>`).join('');
-  } catch(e) { el.innerHTML = `<div class="empty" style="padding:12px 0"><span>${e.message}</span></div>`; }
-}
 
-async function btScan() {
-  document.getElementById('btn-bt-scan').style.display = 'none';
-  document.getElementById('btn-bt-stop').style.display = 'inline-flex';
-  toast('Scan en cours (20s)…');
-  await api('POST', '/bluetooth/scan').catch(() => {});
-  document.getElementById('btn-bt-scan').style.display = 'inline-flex';
-  document.getElementById('btn-bt-stop').style.display = 'none';
-  loadBT();
+// ══════════════════════════════════════════════════════
+// Thèmes de couleur (v1.4)
+// ══════════════════════════════════════════════════════
+const THEMES = [
+  {id:'violet', nom:'Violet', c:'#A99BFF'},
+  {id:'menthe', nom:'Menthe', c:'#7FD1B9'},
+  {id:'ambre',  nom:'Ambre',  c:'#F2A65A'},
+  {id:'corail', nom:'Corail', c:'#FF8A7A'},
+  {id:'bleu',   nom:'Bleu',   c:'#6EA8FF'},
+  {id:'rose',   nom:'Rose',   c:'#F48FC6'},
+];
+function lireTheme() {
+  try { return localStorage.getItem('ab_theme') || 'violet'; } catch(e) { return 'violet'; }
 }
-
-async function btStopScan() {
-  await api('POST', '/bluetooth/scan-stop').catch(() => {});
-  document.getElementById('btn-bt-scan').style.display = 'inline-flex';
-  document.getElementById('btn-bt-stop').style.display = 'none';
-  toast('Scan arrêté');
-  loadBT();
-}
-
-async function btDisableAll() {
-  try {
-    await api('POST', '/bluetooth/disable');
-    toast('Bluetooth désactivé');
-    loadBT();
-  } catch(e) { toast('Erreur: ' + e.message); }
-}
-
-async function btEnableAll() {
-  try {
-    await api('POST', '/bluetooth/enable');
-    toast('Bluetooth activé');
-    loadBT();
-  } catch(e) { toast('Erreur: ' + e.message); }
-}
-async function btCon(mac) { toast('Connexion…'); await api('POST',`/bluetooth/connect/${mac}`).catch(e=>toast(e.message)); loadBT(); }
-async function btDis(mac) { await api('POST',`/bluetooth/disconnect/${mac}`).catch(()=>{}); loadBT(); }
-
-async function loadBTOutputs() {
-  try {
-    const devs = await api('GET', '/bluetooth/devices');
-    const sel = document.getElementById('cfg-output');
-    // Supprimer les options BT existantes
-    [...sel.options].filter(o => o.value.startsWith('bluetooth:')).forEach(o => o.remove());
-    devs.filter(d => d.connected).forEach(d => {
-      const opt = document.createElement('option');
-      opt.value = `bluetooth:${d.mac}`;
-      opt.textContent = `🔵 ${d.name}`;
-      sel.appendChild(opt);
+function appliquerTheme(id) {
+  const t = THEMES.find(x => x.id === id) || THEMES[0];
+  if (t.id === 'violet') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', t.id);
+  try { localStorage.setItem('ab_theme', t.id); } catch(e) {}
+  const nom = document.getElementById('theme-name');
+  if (nom) nom.textContent = t.nom;
+  const box = document.getElementById('theme-swatches');
+  if (box) {
+    box.innerHTML = '';
+    THEMES.forEach(x => {
+      const b = document.createElement('button');
+      b.className = 'theme-sw' + (x.id === t.id ? ' on' : '');
+      b.style.background = x.c;
+      b.setAttribute('aria-label', x.nom);
+      b.onclick = (ev) => { ev.stopPropagation(); appliquerTheme(x.id); };
+      box.appendChild(b);
     });
-    // Sélectionner auto le BT si connecté
-    if (devs.some(d => d.connected)) {
-      const btOpt = [...sel.options].find(o => o.value.startsWith('bluetooth:'));
-      if (btOpt) sel.value = btOpt.value;
-    }
-  } catch(e) {}
+  }
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', '#0E0F13');
 }
+function toggleThemePanel(ev) {
+  if (ev) ev.stopPropagation();
+  const p = document.getElementById('theme-panel');
+  p.classList.toggle('open');
+  document.getElementById('nav-theme').classList.toggle('active', p.classList.contains('open'));
+}
+document.addEventListener('click', (ev) => {
+  const p = document.getElementById('theme-panel');
+  if (p && p.classList.contains('open') && !p.contains(ev.target)) {
+    p.classList.remove('open');
+    document.getElementById('nav-theme').classList.remove('active');
+  }
+});
+appliquerTheme(lireTheme());
 
 // ══════════════════════════════════════════════════════
 // Init
 // ══════════════════════════════════════════════════════
 connectWS();
-loadBTOutputs();
 loadRecent();
 initScreensaver();
 initClockWeather();

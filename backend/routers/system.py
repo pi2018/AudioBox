@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import Response
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import subprocess, secrets, os, json, asyncio, logging
 from config import load_config, save_config
 from routers.settings import verify_token
@@ -15,7 +14,7 @@ logger = logging.getLogger("system")
 async def reboot(_: bool = Depends(verify_token)):
     """Redémarre le Raspberry Pi."""
     logger.info("Reboot demandé depuis le dashboard")
-    asyncio.get_event_loop().call_later(2, lambda: subprocess.run(["sudo", "reboot"]))
+    asyncio.get_event_loop().call_later(2, lambda: subprocess.run(["sudo", "-n", "/usr/sbin/reboot"]))
     return {"status": "rebooting", "message": "Redémarrage dans 2 secondes..."}
 
 
@@ -23,7 +22,7 @@ async def reboot(_: bool = Depends(verify_token)):
 async def shutdown(_: bool = Depends(verify_token)):
     """Éteint le Raspberry Pi."""
     logger.info("Shutdown demandé depuis le dashboard")
-    asyncio.get_event_loop().call_later(2, lambda: subprocess.run(["sudo", "shutdown", "-h", "now"]))
+    asyncio.get_event_loop().call_later(2, lambda: subprocess.run(["sudo", "-n", "/usr/sbin/shutdown", "-h", "now"]))
     return {"status": "shutting_down", "message": "Arrêt dans 2 secondes..."}
 
 
@@ -31,7 +30,7 @@ async def shutdown(_: bool = Depends(verify_token)):
 async def restart_backend(_: bool = Depends(verify_token)):
     """Redémarre uniquement le backend AudioBox."""
     asyncio.get_event_loop().call_later(1, lambda: subprocess.run(
-        ["sudo", "systemctl", "restart", "jv-backend"]
+        ["sudo", "-n", "/usr/bin/systemctl", "restart", "jv-backend"]
     ))
     return {"status": "restarting", "message": "Backend redémarre..."}
 
@@ -51,24 +50,40 @@ async def ytdlp_version():
 
 @router.post("/update-ytdlp")
 async def update_ytdlp(_: bool = Depends(verify_token)):
-    """Met à jour yt-dlp vers la dernière version."""
+    """Met à jour yt-dlp vers la dernière version (script autorisé dans sudoers)."""
     try:
-        r = subprocess.run(
-            ["sudo", "curl", "-sSL",
-             "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp",
-             "-o", "/usr/local/bin/yt-dlp"],
-            capture_output=True, text=True, timeout=30
-        )
-        subprocess.run(["sudo", "chmod", "+x", "/usr/local/bin/yt-dlp"],
-                       capture_output=True, timeout=5)
-        # Vérifier la nouvelle version
-        r2 = subprocess.run(["yt-dlp", "--version"],
-                             capture_output=True, text=True, timeout=10)
-        return {"status": "updated", "version": r2.stdout.strip()}
+        r = subprocess.run(["sudo", "-n", "/opt/jv/system/update-ytdlp.sh"],
+                           capture_output=True, text=True, timeout=60)
     except subprocess.TimeoutExpired:
         raise HTTPException(status_code=504, detail="Timeout — vérifiez votre connexion")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    # Avant, l'échec passait inaperçu et l'écran affichait « mis à jour ».
+    if r.returncode != 0:
+        detail = (r.stderr or r.stdout).strip()[:200] or "échec"
+        raise HTTPException(status_code=500, detail=f"Mise à jour impossible : {detail}")
+    v = subprocess.run(["yt-dlp", "--version"], capture_output=True, text=True, timeout=10)
+    return {"status": "updated", "version": v.stdout.strip()}
+
+
+@router.post("/update-audiobox")
+async def update_audiobox(_: bool = Depends(verify_token)):
+    """Télécharge la dernière AudioBox sur GitHub et la réinstalle (en arrière-plan)."""
+    try:
+        r = subprocess.run(["sudo", "-n", "/opt/jv/system/update-audiobox.sh"],
+                           capture_output=True, text=True, timeout=20)
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="Le lancement de la mise à jour ne répond pas")
+    if r.returncode != 0:
+        raise HTTPException(status_code=500, detail=(r.stderr or r.stdout).strip()[:200] or "échec")
+    return {"status": "started",
+            "message": "Mise à jour lancée : la box redémarre son serveur dans quelques minutes."}
+
+
+@router.get("/version")
+async def version():
+    try:
+        return json.load(open("/opt/jv/version.json"))
+    except Exception:
+        return {"version": "?"}
 
 
 # ── Backup / Restore ──────────────────────────────────────────────────────────
@@ -77,7 +92,7 @@ async def update_ytdlp(_: bool = Depends(verify_token)):
 async def backup_config(_: bool = Depends(verify_token)):
     """Télécharge la configuration en clair (JSON)."""
     cfg = load_config()
-    # Masquer les mots de passe NAS mais garder tout le reste
+    # La sauvegarde contient la clé Audiobookshelf : elle est donc réservée au token.
     safe = json.dumps(cfg, indent=2, ensure_ascii=False)
     return Response(
         content=safe,
@@ -99,7 +114,7 @@ async def restore_config(data: dict, _: bool = Depends(verify_token)):
 # ── Logs ──────────────────────────────────────────────────────────────────────
 
 @router.get("/logs")
-async def get_logs(lines: int = 100):
+async def get_logs(lines: int = 100, _: bool = Depends(verify_token)):
     """Retourne les derniers logs du backend."""
     try:
         r = subprocess.run(
@@ -132,7 +147,6 @@ async def system_status():
 
     # État des services
     backend = run(["systemctl", "is-active", "jv-backend"])
-    bluetooth = run(["systemctl", "is-active", "bluetooth"])
 
     return {
         "temperature": temp,
@@ -142,6 +156,5 @@ async def system_status():
         "ytdlp":       ytdlp,
         "services": {
             "backend":   backend,
-            "bluetooth": bluetooth,
         }
     }

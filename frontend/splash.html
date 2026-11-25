@@ -63,11 +63,11 @@ body{background:#0a0a0f;display:flex;align-items:center;justify-content:center;h
 async function waitForBackend() {
   while(true) {
     try {
-      const r = await fetch('http://localhost:8000/api/player/status');
-      if(r.ok) {
-        window.location.href = 'http://localhost:8000';
-        return;
-      }
+      // « no-cors » : cette page est un fichier local, le serveur n'autorise plus les
+      // autres origines. Une réponse (même illisible) suffit à dire qu'il est prêt.
+      await fetch('http://localhost:8000/api/player/status', {mode: 'no-cors', cache: 'no-store'});
+      window.location.href = 'http://localhost:8000';
+      return;
     } catch(e) {}
     await new Promise(r => setTimeout(r, 1500));
   }

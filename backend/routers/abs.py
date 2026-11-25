@@ -251,9 +251,10 @@ async def stream_item(item_id: str, file_id: str = ""):
         stream_url = f"{abs_url}/api/items/{item_id}/stream"
         logger.warning(f"Aucun audioFile trouvé, utilisation du stream direct")
 
+    # La clé API ne quitte plus le serveur : avant, elle était renvoyée ici à
+    # quiconque sur le réseau. Le lecteur l'ajoute lui-même (voir player.play).
     return {
         "url":      stream_url,
-        "token":    api_key,
         "title":    title,
         "duration": duration,
         "item_id":  item_id,

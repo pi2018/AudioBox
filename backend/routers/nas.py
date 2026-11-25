@@ -9,9 +9,9 @@ ALLOWED_ROOTS = ["/opt/jv/nas", "/mnt"]
 
 
 def _is_safe_path(path: str) -> bool:
-    """Vérifie que le chemin est dans une racine autorisée."""
+    """Vérifie que le chemin est dans une racine autorisée (« /mnt2 » n'est pas « /mnt »)."""
     p = str(Path(path).resolve())
-    return any(p.startswith(root) for root in ALLOWED_ROOTS)
+    return any(p == root or p.startswith(root + os.sep) for root in ALLOWED_ROOTS)
 
 
 @router.get("/mounts")

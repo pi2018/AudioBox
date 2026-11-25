@@ -55,11 +55,14 @@ async def resolve(req: YoutubeRequest):
         raise HTTPException(status_code=400, detail="URL manquante")
 
     fmt = "bestaudio/best" if req.audio_only else "best"
+    # « %(...)j » : yt-dlp écrit lui-même un JSON correct. Avant, un titre avec des
+    # guillemets ou un direct (durée « NA ») donnait un JSON cassé : vidéo introuvable.
+    # « -- » : l'adresse ne peut pas être prise pour une option de yt-dlp.
     raw = await _run_ytdlp([
         "--no-playlist",
-        "--print", '{"url":"%(url)s","title":"%(title)s","duration":%(duration)s,"thumbnail":"%(thumbnail)s"}',
+        "--print", "%(.{url,title,duration,thumbnail})j",
         "-f", fmt,
-        req.url
+        "--", req.url
     ])
 
     try:
@@ -80,7 +83,7 @@ async def search_youtube(q: str, max_results: int = 10):
     raw = await _run_ytdlp([
         f"ytsearch{max_results}:{q}",
         "--no-playlist",
-        "--print", '{"id":"%(id)s","title":"%(title)s","duration":%(duration)s,"thumbnail":"%(thumbnail)s","url":"https://www.youtube.com/watch?v=%(id)s"}',
+        "--print", "%(.{id,title,duration,thumbnail})j",
         "--skip-download"
     ], timeout=45)
 
@@ -90,7 +93,9 @@ async def search_youtube(q: str, max_results: int = 10):
         if not line:
             continue
         try:
-            results.append(json.loads(line))
+            r = json.loads(line)
         except json.JSONDecodeError:
             continue
+        r["url"] = f"https://www.youtube.com/watch?v={r.get('id', '')}"
+        results.append(r)
     return results

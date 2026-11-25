@@ -15,7 +15,7 @@ echo "  Utilisateur : ${USER_NAME}"
 
 title "Installation des paquets"
 apt-get update -qq
-apt-get install -y -qq python3 python3-pip python3-venv python3-dev chromium chromium-sandbox openbox xserver-xorg xinit x11-xserver-utils mpv pipewire pipewire-alsa pipewire-audio pipewire-bin pipewire-pulse wireplumber libspa-0.2-bluetooth bluetooth bluez fbi xdotool unclutter curl git cifs-utils rfkill alsa-utils fonts-noto-color-emoji > /dev/null 2>&1
+apt-get install -y -qq python3 python3-pip python3-venv python3-dev chromium chromium-sandbox openbox xserver-xorg xinit x11-xserver-utils mpv pipewire pipewire-alsa pipewire-audio pipewire-bin pipewire-pulse wireplumber fbi xdotool unclutter curl git cifs-utils alsa-utils fonts-noto-color-emoji > /dev/null 2>&1
 log "Paquets installes"
 
 title "Installation yt-dlp"
@@ -27,8 +27,14 @@ mkdir -p "$INSTALL_DIR"
 cp -r "$SCRIPT_DIR/backend" "$INSTALL_DIR/"
 cp -r "$SCRIPT_DIR/frontend" "$INSTALL_DIR/"
 [ -d "$SCRIPT_DIR/system" ] && cp -r "$SCRIPT_DIR/system" "$INSTALL_DIR/"
+cp "$SCRIPT_DIR/version.json" "$INSTALL_DIR/" 2>/dev/null || true
 mkdir -p "$INSTALL_DIR/config" "$INSTALL_DIR/logs" "$INSTALL_DIR/nas"
 chown -R "$USER_NAME:$USER_NAME" "$INSTALL_DIR"
+# Les scripts lances avec sudo appartiennent a root et ne sont PAS modifiables
+# par l'utilisateur : sinon il pourrait les reecrire et devenir root.
+chown -R root:root "$INSTALL_DIR/system"
+chmod 755 "$INSTALL_DIR/system"
+chmod 755 "$INSTALL_DIR/system/"*.sh
 log "Fichiers deployes"
 
 title "Environnement Python"
@@ -71,14 +77,21 @@ systemctl enable jv-backend > /dev/null 2>&1
 log "Service backend installe"
 
 title "Permissions sudoers"
-cat > /etc/sudoers.d/audiobox << EOF
-$USER_NAME ALL=(ALL) NOPASSWD: /usr/bin/systemctl start jv-backend
-$USER_NAME ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop jv-backend
-$USER_NAME ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart jv-backend
-$USER_NAME ALL=(ALL) NOPASSWD: /usr/sbin/reboot
-$USER_NAME ALL=(ALL) NOPASSWD: /usr/sbin/shutdown
-EOF
+cat > /etc/sudoers.d/audiobox << SUDOEOF
+$USER_NAME ALL=(root) NOPASSWD: /usr/bin/systemctl start jv-backend
+$USER_NAME ALL=(root) NOPASSWD: /usr/bin/systemctl stop jv-backend
+$USER_NAME ALL=(root) NOPASSWD: /usr/bin/systemctl restart jv-backend
+$USER_NAME ALL=(root) NOPASSWD: /usr/sbin/reboot
+$USER_NAME ALL=(root) NOPASSWD: /usr/sbin/shutdown
+$USER_NAME ALL=(root) NOPASSWD: $INSTALL_DIR/system/mount-nas.sh
+$USER_NAME ALL=(root) NOPASSWD: $INSTALL_DIR/system/umount-nas.sh
+$USER_NAME ALL=(root) NOPASSWD: $INSTALL_DIR/system/update-ytdlp.sh
+$USER_NAME ALL=(root) NOPASSWD: $INSTALL_DIR/system/update-audiobox.sh
+SUDOEOF
 chmod 0440 /etc/sudoers.d/audiobox
+visudo -cf /etc/sudoers.d/audiobox > /dev/null || { echo "sudoers invalide"; rm -f /etc/sudoers.d/audiobox; exit 1; }
+# Anciennes autorisations (versions <= 1.3), remplacees par celles ci-dessus.
+rm -f /etc/sudoers.d/sudoers-jv-audiobox /etc/sudoers.d/jv-audiobox /etc/polkit-1/rules.d/99-jv-polkit.rules
 log "Sudoers configure"
 
 echo "allowed_users=anybody" > /etc/X11/Xwrapper.config
@@ -159,32 +172,18 @@ else
   warn "splash.png absent"
 fi
 
-title "Bluetooth auto"
-cat > /etc/systemd/system/audiobox-bluetooth.service << 'BTEOF'
-[Unit]
-Description=AudioBox Bluetooth unblock
-After=bluetooth.service
-Wants=bluetooth.service
-
-[Service]
-Type=oneshot
-ExecStart=/usr/sbin/rfkill unblock bluetooth
-ExecStartPost=/bin/sh -c 'sleep 3; bluetoothctl power on || true'
-RemainAfterExit=yes
-
-[Install]
-WantedBy=multi-user.target
-BTEOF
-systemctl enable audiobox-bluetooth > /dev/null 2>&1 || true
-log "Bluetooth configure"
+# Bluetooth retire en v1.4 : on desactive l'ancien service s'il existe.
+systemctl disable --now audiobox-bluetooth > /dev/null 2>&1 || true
+rm -f /etc/systemd/system/audiobox-bluetooth.service
 
 title "Demarrage backend"
 systemctl start jv-backend 2>/dev/null || true
 sleep 6
-TOKEN=$(journalctl -u jv-backend --no-pager 2>/dev/null | grep -oP 'Dashboard Token: \K[A-Za-z0-9_-]+' | tail -1)
+# Le token n'est plus ecrit dans le journal : on le lit dans son fichier (600).
+TOKEN=$(cat "$INSTALL_DIR/config/.dashboard_token_v2" 2>/dev/null || echo "voir l'ecran de la box")
 IP=$(hostname -I | awk '{print $1}')
+install -m 600 -o "$USER_NAME" -g "$USER_NAME" /dev/null "$USER_HOME/audiobox-token.txt"
 echo "$TOKEN" > "$USER_HOME/audiobox-token.txt"
-chown "$USER_NAME:$USER_NAME" "$USER_HOME/audiobox-token.txt" 2>/dev/null || true
 echo ""
 echo -e "${CYAN}========================================================${NC}"
 echo -e "   ${BOLD}AudioBox installe avec succes !${NC}"

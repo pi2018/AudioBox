@@ -83,11 +83,16 @@ async def _send_progress(item_id: str, position: float,
         logger.warning(f"Sync ABS échouée: {e}")
 
 
-async def _sync_loop(item_id: str, audio_manager):
+# Arrêté à moins de 30 s de la fin tout seul : le livre est fini.
+FIN = 30.0
+
+
+async def _sync_loop(item_id: str, audio_manager, attente: float = 8):
     logger.info(f"Sync ABS démarrée pour item {item_id}")
     # Attendre que mpv soit bien positionné
-    await asyncio.sleep(8)
+    await asyncio.sleep(attente)
     last_sent = -1
+    dernier_vu, longueur = 0.0, 0.0
 
     while True:
         try:
@@ -98,11 +103,17 @@ async def _sync_loop(item_id: str, audio_manager):
 
             if not state.get("playing") and not state.get("paused"):
                 logger.info(f"Lecture terminée pour {item_id}")
+                # mpv s'est arrêté tout seul tout près de la fin : le livre est fini.
+                # Avant, ABS ne recevait jamais « terminé ».
+                if longueur > 0 and dernier_vu >= longueur - FIN:
+                    await _send_progress(item_id, longueur, longueur, is_finished=True)
                 wh = _get_webhooks()
                 if wh:
                     asyncio.create_task(wh.fire("finished", {"item_id": item_id}))
                 break
 
+            if position > 0:
+                dernier_vu, longueur = position, duration or longueur
             # Envoyer seulement si position a avancé d'au moins 1s
             if position > last_sent + 1:
                 await _send_progress(item_id, position, duration)
@@ -123,10 +134,10 @@ async def _sync_loop(item_id: str, audio_manager):
             await asyncio.sleep(5)
 
 
-def start_sync(item_id: str, audio_manager, start_position: float = 0.0):
+def start_sync(item_id: str, audio_manager, start_position: float = 0.0, attente: float = 8):
     global _sync_task
     stop_sync()
-    _sync_task = asyncio.create_task(_sync_loop(item_id, audio_manager))
+    _sync_task = asyncio.create_task(_sync_loop(item_id, audio_manager, attente))
 
 
 def stop_sync():

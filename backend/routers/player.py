@@ -4,6 +4,8 @@ import asyncio, logging
 from services.audio_manager import AudioManager
 from services.ws_manager import WSManager
 from services import abs_sync, webhooks
+from config import load_config
+from routers.nas import _is_safe_path
 
 router  = APIRouter(prefix="/player", tags=["player"])
 audio   = AudioManager()
@@ -37,13 +39,33 @@ class SpeedRequest(BaseModel):
     speed: float = 1.0  # 7 valeurs en dB : [60Hz, 150Hz, 400Hz, 1kHz, 2.5kHz, 6kHz, 15kHz]
 
 
+def _uri_autorisee(uri: str) -> bool:
+    """Une adresse web, ou un fichier du NAS. Rien d'autre n'arrive au lecteur."""
+    if uri.startswith("http://") or uri.startswith("https://"):
+        return True
+    return uri.startswith("/") and _is_safe_path(uri)
+
+
+def _jeton_abs(uri: str) -> str:
+    """La clé Audiobookshelf, seulement pour une adresse de TON serveur Audiobookshelf."""
+    cfg = load_config()
+    base = str(cfg.get("abs_url", "")).rstrip("/")
+    if base and uri.startswith(base + "/"):
+        return cfg.get("abs_api_key", "")
+    return ""
+
+
 @router.post("/play")
 async def play(req: PlayRequest):
     global _current_item_id
     if not req.uri:
         raise HTTPException(status_code=400, detail="URI manquante")
+    if not _uri_autorisee(req.uri):
+        raise HTTPException(status_code=400, detail="Adresse de lecture non autorisée")
+    # La clé n'est plus envoyée par l'écran : le serveur l'ajoute, et seulement vers ABS.
+    jeton = _jeton_abs(req.uri) if req.source == "abs" else ""
     try:
-        await audio.play(req.uri, req.output, req.start_time, req.http_token)
+        await audio.play(req.uri, req.output, req.start_time, jeton)
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
@@ -98,6 +120,10 @@ async def resume():
         await audio.resume()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    # La pause arrête l'envoi de la position à ABS : il faut le relancer ici.
+    # Avant, après pause + reprise, plus rien n'était enregistré dans ABS.
+    if _current_item_id:
+        abs_sync.start_sync(_current_item_id, audio, attente=2)
     await ws_mgr.broadcast({"event": "resume"})
     return {"status": "playing"}
 
@@ -105,7 +131,13 @@ async def resume():
 @router.post("/stop")
 async def stop():
     global _current_item_id
-    # Arrêter la sync EN PREMIER
+    # La position finale part AVANT d'arrêter mpv : après, il ne la connaît plus.
+    if _current_item_id:
+        try:
+            state = await audio.get_status()
+            await abs_sync._send_progress(_current_item_id, state.get("position", 0), state.get("duration", 0))
+        except Exception as e:
+            logger.debug(f"Sync stop: {e}")
     abs_sync.stop_sync()
     _current_item_id = None
     # Puis arrêter mpv
