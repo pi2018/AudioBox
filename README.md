@@ -15,7 +15,6 @@ A self-contained kiosk audio player built on Raspberry Pi 4 with a 7-inch touchs
 - 🌙 **Standby Mode** — Clock + weather display after 3 minutes
 - 📱 **Mobile Optimized** — Responsive design for smartphones
 - 🎨 **Dynamic Background** — Album art as blurred background
-- 🔵 **Bluetooth** — Bluetooth speaker support
 
 ## 🛠️ Hardware
 

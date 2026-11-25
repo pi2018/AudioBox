@@ -64,6 +64,28 @@ async def update_ytdlp(_: bool = Depends(verify_token)):
     return {"status": "updated", "version": v.stdout.strip()}
 
 
+@router.post("/update-audiobox")
+async def update_audiobox(_: bool = Depends(verify_token)):
+    """Télécharge la dernière AudioBox sur GitHub et la réinstalle (en arrière-plan)."""
+    try:
+        r = subprocess.run(["sudo", "-n", "/opt/jv/system/update-audiobox.sh"],
+                           capture_output=True, text=True, timeout=20)
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="Le lancement de la mise à jour ne répond pas")
+    if r.returncode != 0:
+        raise HTTPException(status_code=500, detail=(r.stderr or r.stdout).strip()[:200] or "échec")
+    return {"status": "started",
+            "message": "Mise à jour lancée : la box redémarre son serveur dans quelques minutes."}
+
+
+@router.get("/version")
+async def version():
+    try:
+        return json.load(open("/opt/jv/version.json"))
+    except Exception:
+        return {"version": "?"}
+
+
 # ── Backup / Restore ──────────────────────────────────────────────────────────
 
 @router.get("/backup")

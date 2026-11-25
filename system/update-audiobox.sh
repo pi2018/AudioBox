@@ -1,20 +1,43 @@
 #!/bin/bash
-# Mise à jour automatique AudioBox depuis GitHub
+# /opt/jv/system/update-audiobox.sh — met toute l'AudioBox à jour depuis GitHub.
+# Lancé par le bouton « Mettre à jour » (via sudo, autorisé dans sudoers).
+# Propriétaire root, droits 755 : l'utilisateur jv ne peut pas le modifier.
+#
+# Il télécharge la dernière version de la branche main, puis relance install.sh
+# de cette version : serveur, interface, scripts, droits et services ensemble.
+# Le travail se fait en arrière-plan : le serveur qui l'a demandé va redémarrer.
 set -euo pipefail
 
-REPO="https://raw.githubusercontent.com/pi2018/AudioBox/main"
-LOCAL_V=$(cat /opt/jv/version.json 2>/dev/null | python3 -c "import sys,json;print(json.load(sys.stdin)['version'])" 2>/dev/null || echo "0.0.0")
-REMOTE_V=$(curl -sf $REPO/version.json | python3 -c "import sys,json;print(json.load(sys.stdin)['version'])")
+DEPOT="pi2018/AudioBox"
+BRANCHE="main"
+JOURNAL="/opt/jv/logs/mise-a-jour.log"
+UTILISATEUR="${AUDIOBOX_USER:-jv}"
 
-echo "$(date) Version locale: $LOCAL_V — GitHub: $REMOTE_V"
-
-if [ "$LOCAL_V" = "$REMOTE_V" ]; then
-  echo "$(date) Déjà à jour."
-  exit 0
+if [[ "${1:-}" != "--maintenant" ]]; then
+    # Détaché du serveur : il peut redémarrer sans couper la mise à jour.
+    mkdir -p "$(dirname "$JOURNAL")"
+    setsid nohup "$0" --maintenant > "$JOURNAL" 2>&1 < /dev/null &
+    echo "OK: mise à jour lancée"
+    exit 0
 fi
 
-echo "$(date) Mise à jour $LOCAL_V → $REMOTE_V"
-curl -sf $REPO/frontend/index.html -o /opt/jv/frontend/index.html
-curl -sf $REPO/version.json -o /opt/jv/version.json
-systemctl restart jv-backend
-echo "$(date) Mise à jour terminée !"
+echo "$(date) Mise à jour AudioBox depuis $DEPOT ($BRANCHE)"
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+
+curl -fsSL "https://codeload.github.com/${DEPOT}/tar.gz/refs/heads/${BRANCHE}" -o "$TMP/audiobox.tar.gz"
+tar -xzf "$TMP/audiobox.tar.gz" -C "$TMP"
+SRC="$(find "$TMP" -mindepth 1 -maxdepth 1 -type d | head -1)"
+
+if [[ ! -f "$SRC/install.sh" || ! -d "$SRC/backend" ]]; then
+    echo "Archive inattendue : mise à jour annulée"
+    exit 1
+fi
+
+LOCAL_V="$(python3 -c "import json;print(json.load(open('/opt/jv/version.json'))['version'])" 2>/dev/null || echo "?")"
+NOUVELLE_V="$(python3 -c "import json;print(json.load(open('$SRC/version.json'))['version'])" 2>/dev/null || echo "?")"
+echo "$(date) Version installée : $LOCAL_V — nouvelle : $NOUVELLE_V"
+
+cd "$SRC"
+SUDO_USER="$UTILISATEUR" bash ./install.sh
+echo "$(date) Mise à jour terminée ($NOUVELLE_V)"

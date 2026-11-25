@@ -1,5 +1,5 @@
 {
-  "version": "1.0.1",
-  "date": "2026-06-07",
-  "notes": "Interface Volumio optimisée pour écran 7 pouces"
+  "version": "1.4.0",
+  "date": "2026-11-25",
+  "notes": "Sécurité (clé Audiobookshelf, token), NAS réparé, suivi des livres audio, mise à jour depuis l'écran, Spotify et Bluetooth retirés"
 }
