@@ -4,8 +4,15 @@ GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'
 CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
 log()   { echo -e "${GREEN}[OK]${NC} $*"; }
 warn()  { echo -e "${YELLOW}[!]${NC} $*"; }
-title() { echo -e "\n${CYAN}${BOLD}-- $* --${NC}"; }
+title() { ETAPE="$*"; echo -e "\n${CYAN}${BOLD}-- $* --${NC}"; }
 [[ "$EUID" -ne 0 ]] && { echo "Lancer avec : sudo bash install.sh"; exit 1; }
+JOURNAL_INSTALL="/var/log/audiobox-install.log"
+: > "$JOURNAL_INSTALL"
+ETAPE="debut"
+# Avant, une erreur arretait le script sans rien dire. Maintenant on dit ou, et on
+# montre la fin du journal d'installation.
+trap 'echo -e "\n${RED}${BOLD}Echec a l etape : ${ETAPE}${NC}"; echo "Fin du journal ($JOURNAL_INSTALL) :"; tail -n 25 "$JOURNAL_INSTALL"' ERR
+export DEBIAN_FRONTEND=noninteractive
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_DIR="/opt/jv"
 USER_NAME="${SUDO_USER:-jv}"
@@ -14,12 +21,23 @@ echo -e "${CYAN}${BOLD}=== AudioBox - Installation ===${NC}"
 echo "  Utilisateur : ${USER_NAME}"
 
 title "Installation des paquets"
-apt-get update -qq
-apt-get install -y -qq python3 python3-pip python3-venv python3-dev chromium chromium-sandbox openbox xserver-xorg xinit x11-xserver-utils mpv pipewire pipewire-alsa pipewire-audio pipewire-bin pipewire-pulse wireplumber fbi xdotool unclutter curl git cifs-utils alsa-utils fonts-noto-color-emoji > /dev/null 2>&1
+# Au premier demarrage, Raspberry Pi OS fait ses propres mises a jour : on attend
+# qu'il libere le gestionnaire de paquets (jusqu'a 10 minutes) au lieu d'echouer.
+APT="apt-get -y -o DPkg::Lock::Timeout=600"
+echo "  (peut prendre 10 a 20 minutes, journal : $JOURNAL_INSTALL)"
+$APT update >> "$JOURNAL_INSTALL" 2>&1
+$APT install python3 python3-pip python3-venv python3-dev chromium openbox \
+    xserver-xorg xinit x11-xserver-utils mpv pipewire pipewire-alsa pipewire-audio \
+    pipewire-bin pipewire-pulse wireplumber xdotool curl git cifs-utils alsa-utils \
+    >> "$JOURNAL_INSTALL" 2>&1
+# Facultatifs : un nom absent de cette version du systeme ne bloque plus tout.
+for paquet in chromium-sandbox fbi unclutter fonts-noto-color-emoji; do
+    $APT install "$paquet" >> "$JOURNAL_INSTALL" 2>&1 || warn "Paquet facultatif absent : $paquet"
+done
 log "Paquets installes"
 
 title "Installation yt-dlp"
-pip3 install --break-system-packages -q --upgrade yt-dlp > /dev/null 2>&1 || true
+pip3 install --break-system-packages -q --upgrade yt-dlp >> "$JOURNAL_INSTALL" 2>&1 || warn "yt-dlp non installe (a refaire depuis Parametres)"
 log "yt-dlp installe"
 
 title "Deploiement des fichiers"
@@ -39,8 +57,8 @@ log "Fichiers deployes"
 
 title "Environnement Python"
 sudo -u "$USER_NAME" python3 -m venv "$INSTALL_DIR/venv"
-sudo -u "$USER_NAME" "$INSTALL_DIR/venv/bin/pip" install -q --upgrade pip > /dev/null 2>&1
-sudo -u "$USER_NAME" "$INSTALL_DIR/venv/bin/pip" install -q -r "$INSTALL_DIR/backend/requirements.txt" > /dev/null 2>&1
+sudo -u "$USER_NAME" "$INSTALL_DIR/venv/bin/pip" install -q --upgrade pip >> "$JOURNAL_INSTALL" 2>&1
+sudo -u "$USER_NAME" "$INSTALL_DIR/venv/bin/pip" install -q -r "$INSTALL_DIR/backend/requirements.txt" >> "$JOURNAL_INSTALL" 2>&1
 log "Venv pret"
 
 title "Service backend"
