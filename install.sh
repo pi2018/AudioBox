@@ -53,6 +53,8 @@ chown -R "$USER_NAME:$USER_NAME" "$INSTALL_DIR"
 chown -R root:root "$INSTALL_DIR/system"
 chmod 755 "$INSTALL_DIR/system"
 chmod 755 "$INSTALL_DIR/system/"*.sh
+# L'ecran garde une copie de l'ancienne page : on l'efface pour qu'il prenne la nouvelle.
+rm -rf "$USER_HOME/.config/chromium/Default/Service Worker" "$USER_HOME/.cache/chromium" 2>/dev/null || true
 log "Fichiers deployes"
 
 title "Environnement Python"
