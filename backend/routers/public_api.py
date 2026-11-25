@@ -10,10 +10,10 @@ import logging
 router = APIRouter(prefix="/public", tags=["public"])
 logger = logging.getLogger("public_api")
 
-# Référence partagée avec player.py
+# Référence partagée avec player.py. Lecture, pause et arrêt passent par ses
+# fonctions : sinon l'envoi de la position à Audiobookshelf n'était pas suivi.
+from routers import player as lecteur
 from routers.player import audio, ws_mgr
-from services import abs_sync
-from routers.player import _current_item_id
 
 
 @router.get("/state")
@@ -38,26 +38,19 @@ async def get_state():
 @router.post("/play")
 async def public_play():
     """Reprend la lecture."""
-    await audio.resume()
-    await ws_mgr.broadcast({"event": "resume"})
-    return {"status": "playing"}
+    return await lecteur.resume()
 
 
 @router.post("/pause")
 async def public_pause():
     """Met en pause."""
-    await audio.pause()
-    await ws_mgr.broadcast({"event": "pause"})
-    return {"status": "paused"}
+    return await lecteur.pause()
 
 
 @router.post("/stop")
 async def public_stop():
     """Arrête la lecture."""
-    abs_sync.stop_sync()
-    await audio.stop()
-    await ws_mgr.broadcast({"event": "stop"})
-    return {"status": "stopped"}
+    return await lecteur.stop()
 
 
 @router.post("/volume/{level}")

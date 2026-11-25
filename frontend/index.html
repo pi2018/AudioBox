@@ -287,10 +287,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
 .eq-val{font-size:10px;color:var(--acc2);font-weight:500;min-width:28px;text-align:center}
 
 /* ══ BT ══════════════════════════════════════════ */
-.bt-device{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border-radius:var(--rsm);margin-bottom:7px}
-.bt-device-name{flex:1;font-size:13px;color:var(--txt)}
-.bt-device-addr{font-size:11px;color:var(--txt3)}
-.bt-connected{font-size:10px;padding:2px 7px;background:rgba(29,158,117,.15);color:var(--green);border-radius:10px}
 
 /* ══ MOBILE S23 ULTRA (393px) ═══════════════════════ */
 @media (max-width: 480px) {
@@ -670,7 +666,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
             <select id="cfg-output" onchange="localStorage.setItem('ab_output',this.value)">
               <option value="jack">Jack 3.5mm</option>
             </select>
-            <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="loadBTOutputs()">↻ Rafraîchir</button>
           </div>
           <div class="field"><label>Volume par défaut : <span id="vol-val">80</span>%</label>
             <input type="range" min="0" max="100" value="80" style="width:100%" oninput="document.getElementById('vol-val').textContent=this.value;setVolume(this.value)">
@@ -689,18 +684,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
             <button class="eq-preset-btn" onclick="applyEQPreset('rock')">Rock</button>
           </div>
           <div class="eq-bands" id="eq-bands"></div>
-        </div>
-
-        <div class="settings-section">
-          <h3>🔵 Bluetooth</h3>
-          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-            <button class="btn btn-ghost btn-sm" id="btn-bt-scan" onclick="btScan()">🔍 Scanner (20s)</button>
-            <button class="btn btn-ghost btn-sm" id="btn-bt-stop" onclick="btStopScan()" style="display:none">⏹ Arrêter scan</button>
-            <button class="btn btn-ghost btn-sm" onclick="loadBT()">↻ Rafraîchir</button>
-            <button class="btn btn-danger btn-sm" onclick="btDisableAll()">🔵 Désactiver BT</button>
-            <button class="btn btn-ghost btn-sm" onclick="btEnableAll()">🔵 Activer BT</button>
-          </div>
-          <div id="bt-devices"></div>
         </div>
 
         </div><!-- /stab-content-sources -->
@@ -728,17 +711,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
             <label style="font-size:12px"><input type="checkbox" id="wh-ev-finished" checked> terminé</label>
           </div>
           <button class="btn btn-primary btn-sm" onclick="addWebhook()">Ajouter webhook</button>
-        </div>
-
-        <div class="settings-section">
-          <h3>🎵 Spotify Connect</h3>
-          <p style="font-size:13px;color:var(--txt2);margin-bottom:12px">Sélectionnez <strong>AudioBox</strong> comme enceinte dans Spotify.</p>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-ghost btn-sm" onclick="spotifyStatus()">📡 État</button>
-            <button class="btn btn-primary btn-sm" onclick="spotifyStart()">▶ Démarrer</button>
-            <button class="btn btn-ghost btn-sm" onclick="spotifyStop()">⏹ Arrêter</button>
-          </div>
-          <div id="spotify-status" style="font-size:12px;color:var(--txt3);margin-top:8px"></div>
         </div>
 
         </div><!-- /stab-content-domotique -->
@@ -969,6 +941,14 @@ html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--txt);fon
 // État global
 // ══════════════════════════════════════════════════════
 let token    = localStorage.getItem('ab_token') || '';
+
+// Tout texte venu de l'extérieur (YouTube, radios, podcasts, NAS, ABS…) passe par
+// esc() avant d'être mis dans la page : sinon un titre piégé pouvait exécuter du code
+// sur l'écran de la box. jsArg() sert pour les paramètres des onclick="…".
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"'`]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'}[c]));
+}
+function jsArg(v) { return esc(JSON.stringify(String(v ?? ''))); }
 let isPlaying = false;
 window._absItems = [];  // Items ABS globaux
 let pState   = {playing:false,paused:false,position:0,duration:0,volume:80};
@@ -1080,7 +1060,7 @@ async function loadRecent() {
       api('GET','/abs/stream/'+itemId).then(s=>{const e=document.getElementById('rt-'+itemId);if(e)e.textContent=s.title||itemId;}).catch(()=>{});
     });
   } catch(e) {
-    recentList.innerHTML = '<div style="color:var(--txt3);font-size:13px">Erreur: '+e.message+'</div>';
+    recentList.innerHTML = '<div style="color:var(--txt3);font-size:13px">Erreur: '+esc(e.message)+'</div>';
   }
 }
 
@@ -1170,12 +1150,12 @@ async function loadABS(forceReload = false) {
         card.addEventListener('click', function() { openBook(window._absItems[this.dataset.idx]); });
         card.innerHTML = `
           <div class="abs-prog-cover">
-            <img src="/api/abs/cover/${item.id}" onerror="this.parentElement.textContent='📚'" loading="lazy">
+            <img src="/api/abs/cover/${encodeURIComponent(item.id)}" onerror="this.parentElement.textContent='📚'" loading="lazy">
             <div class="abs-prog-pct">${pct}%</div>
           </div>
           <div class="abs-prog-info">
-            <div class="abs-prog-title" title="${title.replace(/"/g,"&quot;")}">${title}</div>
-            <div class="abs-prog-author">${author}</div>
+            <div class="abs-prog-title" title="${esc(title)}">${esc(title)}</div>
+            <div class="abs-prog-author">${esc(author)}</div>
             <div class="abs-prog-bar"><div class="abs-prog-bar-fill" style="width:${pct}%"></div></div>
           </div>`;
         progRow.appendChild(card);
@@ -1208,11 +1188,11 @@ async function loadABS(forceReload = false) {
       card.addEventListener("click", function(){ var idx=this.dataset.idx; openBook(window._absItems ? window._absItems[idx] : item); });
       card.innerHTML = `
         <div class="book-cover">
-          <img src="/api/abs/cover/${item.id}" onerror="this.parentElement.textContent='📚'" loading="lazy">
+          <img src="/api/abs/cover/${encodeURIComponent(item.id)}" onerror="this.parentElement.textContent='📚'" loading="lazy">
         </div>
         <div class="book-info">
-          <div class="book-title" title="${title}">${title}</div>
-          <div class="book-author">${author}</div>
+          <div class="book-title" title="${esc(title)}">${esc(title)}</div>
+          <div class="book-author">${esc(author)}</div>
           <div class="book-progress"><div class="book-progress-fill" style="width:${pct}%"></div></div>
         </div>`;
       grid.appendChild(card);
@@ -1220,7 +1200,7 @@ async function loadABS(forceReload = false) {
     el.appendChild(grid);
 
   } catch(e) {
-    el.innerHTML      = `<div class="empty">⚠️<span>${e.message}</span></div>`;
+    el.innerHTML      = `<div class="empty">⚠️<span>${esc(e.message)}</span></div>`;
     progRow.innerHTML = '';
   }
 }
@@ -1280,7 +1260,6 @@ async function startBook() {
     await api('POST', '/player/play', {
       source:     'abs',
       uri:        stream.url,
-      http_token: stream.token,
       item_id:    itemId,
       duration:   Number(stream.duration || currentItem.media?.duration || 0),
       title:      String(stream.title || currentItem.media?.metadata?.title || ''),
@@ -1322,18 +1301,18 @@ async function openBook(item) {
 
   // Pochette
   const covEl = document.getElementById('pd-cover');
-  covEl.innerHTML = `<img src="/api/abs/cover/${item.id}" onerror="this.parentElement.textContent='📚'" style="width:100%;height:100%;object-fit:cover">`;
+  covEl.innerHTML = `<img src="/api/abs/cover/${encodeURIComponent(item.id)}" onerror="this.parentElement.textContent='📚'" style="width:100%;height:100%;object-fit:cover">`;
   // Fond dynamique
   const bgEl = document.getElementById('player-bg');
   if (bgEl) {
-    bgEl.style.backgroundImage = `url('/api/abs/cover/${item.id}')`;
+    bgEl.style.backgroundImage = `url('/api/abs/cover/${encodeURIComponent(item.id)}')`;
     bgEl.classList.add('active');
   }
 
 // badges supprimés
 
   // Mettre à jour la player bar
-  updatePB(title, author, `/api/abs/cover/${item.id}`);
+  updatePB(title, author, `/api/abs/cover/${encodeURIComponent(item.id)}`);
 }
 
 // Proxy cover ABS
@@ -1375,7 +1354,7 @@ async function browseNAS(path) {
       div.className = 'nas-item';
       div.innerHTML = `
         <span class="nas-icon">${item.is_dir ? '📁' : isAudio ? '🎵' : '📄'}</span>
-        <span class="nas-name" title="${item.name}">${item.name}</span>`;
+        <span class="nas-name" title="${esc(item.name)}">${esc(item.name)}</span>`;
 
       if (item.is_dir) {
         div.onclick = () => browseNAS(item.path);
@@ -1385,7 +1364,7 @@ async function browseNAS(path) {
       content.appendChild(div);
     });
   } catch(e) {
-    content.innerHTML = `<div class="empty">⚠️<span>${e.message}</span></div>`;
+    content.innerHTML = `<div class="empty">⚠️<span>${esc(e.message)}</span></div>`;
   }
 }
 
@@ -1393,8 +1372,8 @@ function renderBreadcrumb() {
   const bc = document.getElementById('nas-breadcrumb');
   bc.innerHTML = nasCrumbs.map((c,i) =>
     i < nasCrumbs.length-1
-      ? `<span onclick="nasCrumbs=nasCrumbs.slice(0,${i+1});browseNAS('${c.path}')">${c.label}</span><span class="sep">›</span>`
-      : `<span>${c.label}</span>`
+      ? `<span onclick="nasCrumbs=nasCrumbs.slice(0,${i+1});browseNAS(${jsArg(c.path)})">${esc(c.label)}</span><span class="sep">›</span>`
+      : `<span>${esc(c.label)}</span>`
   ).join('');
 }
 
@@ -1427,16 +1406,16 @@ async function searchYT() {
       d.onclick = () => playYT(r.url, r.title);
       d.innerHTML = `
         <div class="yt-thumb">
-          ${r.thumbnail ? `<img src="${r.thumbnail}" onerror="this.parentElement.textContent='▶'">` : '▶'}
+          ${r.thumbnail ? `<img src="${esc(r.thumbnail)}" onerror="this.parentElement.textContent='▶'">` : '▶'}
         </div>
         <div class="yt-info">
-          <div class="yt-title">${r.title}</div>
+          <div class="yt-title">${esc(r.title)}</div>
           <div class="yt-dur">${r.duration ? fmtTime(r.duration) : ''}</div>
         </div>`;
       el.appendChild(d);
     });
   } catch(e) {
-    el.innerHTML = `<div class="empty">⚠️<span>${e.message}</span></div>`;
+    el.innerHTML = `<div class="empty">⚠️<span>${esc(e.message)}</span></div>`;
   }
 }
 
@@ -1656,23 +1635,23 @@ async function tunerSearch() {
       div.className = 'tuner-card';
       div.innerHTML = `
         <div class="tuner-favicon">
-          ${s.favicon ? `<img src="${s.favicon}" onerror="this.parentElement.textContent='📻'">` : '📻'}
+          ${s.favicon ? `<img src="${esc(s.favicon)}" onerror="this.parentElement.textContent='📻'">` : '📻'}
         </div>
         <div class="tuner-info">
-          <div class="tuner-name">${s.name}</div>
+          <div class="tuner-name">${esc(s.name)}</div>
           <div class="tuner-meta">
-            ${s.country || ''} ${s.tags ? '· ' + s.tags.split(',').slice(0,3).join(', ') : ''}
+            ${esc(s.country || '')} ${s.tags ? '· ' + esc(s.tags.split(',').slice(0,3).join(', ')) : ''}
             ${s.bitrate ? '· ' + s.bitrate + 'kbps' : ''}
           </div>
         </div>
         <div class="tuner-actions">
-          <button class="btn btn-ghost btn-sm" onclick="tunerPlay('${streamUrl}','${s.name.replace(/'/g,"\'")}')">▶</button>
-          <button class="btn btn-primary btn-sm" onclick="tunerSave('${streamUrl}','${s.name.replace(/'/g,"\'")}','${(s.favicon||'').replace(/'/g,"\'")}')">⭐</button>
+          <button class="btn btn-ghost btn-sm" onclick="tunerPlay(${jsArg(streamUrl)},${jsArg(s.name)})">▶</button>
+          <button class="btn btn-primary btn-sm" onclick="tunerSave(${jsArg(streamUrl)},${jsArg(s.name)},${jsArg(s.favicon||'')})">⭐</button>
         </div>`;
       results.appendChild(div);
     });
   } catch(e) {
-    results.innerHTML = `<div class="empty">⚠️<span>Erreur: ${e.message}</span></div>`;
+    results.innerHTML = `<div class="empty">⚠️<span>Erreur: ${esc(e.message)}</span></div>`;
   }
 }
 
@@ -1706,7 +1685,7 @@ async function loadPodcasts() {
     card.onclick = () => showPodcastEpisodes(p, i);
     card.innerHTML = `
       <div class="radio-icon">🎙️</div>
-      <div class="radio-name">${p.title || p.url}</div>
+      <div class="radio-name">${esc(p.title || p.url)}</div>
       <button class="radio-del" onclick="event.stopPropagation();removePodcast(${i})">✕</button>`;
     grid.appendChild(card);
   });
@@ -1728,10 +1707,8 @@ async function addPodcast() {
 }
 
 async function fetchRSS(url) {
-  // Utiliser un proxy CORS pour les flux RSS externes
-  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-  const r = await fetch(proxyUrl);
-  const data = await r.json();
+  // La box télécharge elle-même le flux (avant : un service public étranger).
+  const data = await api('GET', `/podcast/rss?url=${encodeURIComponent(url)}`);
   const xml = data.contents;
   const parser = new DOMParser();
   const doc = parser.parseFromString(xml, 'text/xml');
@@ -1764,8 +1741,8 @@ function showPodcastEpisodes(podcast, idx) {
     div.innerHTML = `
       <div class="yt-thumb">🎙️</div>
       <div class="yt-info">
-        <div class="yt-title">${ep.title}</div>
-        <div class="yt-dur">${ep.pubDate ? new Date(ep.pubDate).toLocaleDateString('fr-FR') : ''} ${ep.duration || ''}</div>
+        <div class="yt-title">${esc(ep.title)}</div>
+        <div class="yt-dur">${ep.pubDate ? new Date(ep.pubDate).toLocaleDateString('fr-FR') : ''} ${esc(ep.duration || '')}</div>
       </div>`;
     list.appendChild(div);
   });
@@ -1857,13 +1834,13 @@ async function loadRadios() {
       // Logo : depuis la station, depuis le cache, ou emoji
       const favicon = s.favicon || logoCache[s.name] || '';
       const logoHtml = favicon
-        ? `<img src="${favicon}" onerror="this.outerHTML='📻'" style="width:52px;height:52px;border-radius:8px;object-fit:cover">`
+        ? `<img src="${esc(favicon)}" onerror="this.outerHTML='📻'" style="width:52px;height:52px;border-radius:8px;object-fit:cover">`
         : `<span id="radio-logo-${i}">📻</span>`;
 
       card.innerHTML = `
-        <button class="radio-fav" onclick="event.stopPropagation();toggleFavoriteRadio('${s.url}')" title="${isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}">${isFav ? '⭐' : '☆'}</button>
+        <button class="radio-fav" onclick="event.stopPropagation();toggleFavoriteRadio(${jsArg(s.url)})" title="${isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}">${isFav ? '⭐' : '☆'}</button>
         <div class="radio-icon">${logoHtml}</div>
-        <div class="radio-name">${s.name}</div>
+        <div class="radio-name">${esc(s.name)}</div>
         <button class="radio-del" onclick="event.stopPropagation();removeRadio(${i})">✕</button>`;
       grid.appendChild(card);
 
@@ -1874,13 +1851,13 @@ async function loadRadios() {
             logoCache[s.name] = url;
             localStorage.setItem('radio_logos', JSON.stringify(logoCache));
             const span = document.getElementById(`radio-logo-${i}`);
-            if (span) span.outerHTML = `<img src="${url}" onerror="this.outerHTML='📻'" style="width:52px;height:52px;border-radius:8px;object-fit:cover">`;
+            if (span) span.outerHTML = `<img src="${esc(url)}" onerror="this.outerHTML='📻'" style="width:52px;height:52px;border-radius:8px;object-fit:cover">`;
           }
         });
       }
     });
   } catch(e) {
-    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">⚠️<span>${e.message}</span></div>`;
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">⚠️<span>${esc(e.message)}</span></div>`;
   }
 }
 
@@ -1940,7 +1917,7 @@ function updatePB(title, author, coverSrc) {
 
   const cov = document.getElementById('pb-cover');
   if (typeof coverSrc === 'string' && coverSrc.startsWith('/')) {
-    cov.innerHTML = `<img src="${coverSrc}" onerror="this.parentElement.textContent='🎵'" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
+    cov.innerHTML = `<img src="${esc(coverSrc)}" onerror="this.parentElement.textContent='🎵'" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
   } else {
     cov.textContent = coverSrc || '🎵';
   }
@@ -2102,9 +2079,9 @@ async function loadWebhooks() {
     el.innerHTML = whs.map((w, i) => `
       <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg2);border-radius:var(--rsm);margin-bottom:6px">
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600">${w.name || 'Webhook'}</div>
-          <div style="font-size:11px;color:var(--txt3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${w.url}</div>
-          <div style="font-size:11px;color:var(--txt2)">${(w.events||[]).join(', ')}</div>
+          <div style="font-size:13px;font-weight:600">${esc(w.name || 'Webhook')}</div>
+          <div style="font-size:11px;color:var(--txt3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(w.url)}</div>
+          <div style="font-size:11px;color:var(--txt2)">${esc((w.events||[]).join(', '))}</div>
         </div>
         <button class="btn btn-danger btn-sm" onclick="removeWebhook(${i})">✕</button>
       </div>`).join('');
@@ -2138,23 +2115,7 @@ async function removeWebhook(idx) {
   loadWebhooks();
 }
 
-async function spotifyStatus() {
-  try {
-    const r = await fetch('/api/spotify/status');
-    const d = await r.json();
-    document.getElementById('spotify-status').textContent = d.running ? '✅ En cours' : '⭕ Arrêté';
-  } catch(e) { document.getElementById('spotify-status').textContent = 'Non installé — lancez setup-spotify.sh'; }
-}
-async function spotifyStart() {
-  await fetch('/api/spotify/start', {method:'POST'}).catch(()=>{});
-  setTimeout(spotifyStatus, 2000);
-  toast('Spotify Connect démarré');
-}
-async function spotifyStop() {
-  await fetch('/api/spotify/stop', {method:'POST'}).catch(()=>{});
-  setTimeout(spotifyStatus, 1000);
-  toast('Spotify Connect arrêté');
-}
+
 
 // ══════════════════════════════════════════════════════
 // SYSTÈME
@@ -2433,7 +2394,7 @@ function renderChapters() {
       api('POST', '/player/seek', {position: ch.start}).catch(() => {});
       toast(`📑 ${ch.title}`);
     };
-    div.innerHTML = `<span>${ch.title || 'Chapitre ' + (i+1)}</span><span style="color:var(--txt3)">${fmtTime(ch.start)}</span>`;
+    div.innerHTML = `<span>${esc(ch.title || 'Chapitre ' + (i+1))}</span><span style="color:var(--txt3)">${fmtTime(ch.start)}</span>`;
     list.appendChild(div);
   });
 }
@@ -2541,8 +2502,6 @@ function initSettings() {
   document.getElementById('cfg-token').value = token;
   document.getElementById('cfg-weather-lat').value = localStorage.getItem('weather_lat') || '49.6116';
   document.getElementById('cfg-weather-lon').value = localStorage.getItem('weather_lon') || '6.1319';
-  loadBT();
-  loadBTOutputs();
   loadSysStatus();
   initEQ();
   loadHAConfig();
@@ -2574,87 +2533,10 @@ async function mountNAS() {
   } catch(e) { toast('Erreur: ' + e.message); }
 }
 
-async function loadBT() {
-  const el = document.getElementById('bt-devices');
-  el.innerHTML = '<div class="empty" style="padding:12px 0"><div class="spinner"></div></div>';
-  try {
-    const devs = await api('GET', '/bluetooth/devices');
-    if (!devs.length) { el.innerHTML = '<div class="empty" style="padding:12px 0"><span>Aucun périphérique</span></div>'; return; }
-    el.innerHTML = devs.map(d => `
-      <div class="bt-device">
-        <div class="bt-dot ${d.connected ? 'on' : ''}"></div>
-        <div style="flex:1">
-          <div style="font-size:13px;font-weight:500">${d.name}</div>
-          <div style="font-size:11px;color:var(--txt3)">${d.mac}</div>
-        </div>
-        ${d.connected
-          ? `<button class="btn btn-ghost btn-sm" onclick="btDis('${d.mac}')">Déconnecter</button>`
-          : `<button class="btn btn-primary btn-sm" onclick="btCon('${d.mac}')">Connecter</button>`}
-      </div>`).join('');
-  } catch(e) { el.innerHTML = `<div class="empty" style="padding:12px 0"><span>${e.message}</span></div>`; }
-}
-
-async function btScan() {
-  document.getElementById('btn-bt-scan').style.display = 'none';
-  document.getElementById('btn-bt-stop').style.display = 'inline-flex';
-  toast('Scan en cours (20s)…');
-  await api('POST', '/bluetooth/scan').catch(() => {});
-  document.getElementById('btn-bt-scan').style.display = 'inline-flex';
-  document.getElementById('btn-bt-stop').style.display = 'none';
-  loadBT();
-}
-
-async function btStopScan() {
-  await api('POST', '/bluetooth/scan-stop').catch(() => {});
-  document.getElementById('btn-bt-scan').style.display = 'inline-flex';
-  document.getElementById('btn-bt-stop').style.display = 'none';
-  toast('Scan arrêté');
-  loadBT();
-}
-
-async function btDisableAll() {
-  try {
-    await api('POST', '/bluetooth/disable');
-    toast('Bluetooth désactivé');
-    loadBT();
-  } catch(e) { toast('Erreur: ' + e.message); }
-}
-
-async function btEnableAll() {
-  try {
-    await api('POST', '/bluetooth/enable');
-    toast('Bluetooth activé');
-    loadBT();
-  } catch(e) { toast('Erreur: ' + e.message); }
-}
-async function btCon(mac) { toast('Connexion…'); await api('POST',`/bluetooth/connect/${mac}`).catch(e=>toast(e.message)); loadBT(); }
-async function btDis(mac) { await api('POST',`/bluetooth/disconnect/${mac}`).catch(()=>{}); loadBT(); }
-
-async function loadBTOutputs() {
-  try {
-    const devs = await api('GET', '/bluetooth/devices');
-    const sel = document.getElementById('cfg-output');
-    // Supprimer les options BT existantes
-    [...sel.options].filter(o => o.value.startsWith('bluetooth:')).forEach(o => o.remove());
-    devs.filter(d => d.connected).forEach(d => {
-      const opt = document.createElement('option');
-      opt.value = `bluetooth:${d.mac}`;
-      opt.textContent = `🔵 ${d.name}`;
-      sel.appendChild(opt);
-    });
-    // Sélectionner auto le BT si connecté
-    if (devs.some(d => d.connected)) {
-      const btOpt = [...sel.options].find(o => o.value.startsWith('bluetooth:'));
-      if (btOpt) sel.value = btOpt.value;
-    }
-  } catch(e) {}
-}
-
 // ══════════════════════════════════════════════════════
 // Init
 // ══════════════════════════════════════════════════════
 connectWS();
-loadBTOutputs();
 loadRecent();
 initScreensaver();
 initClockWeather();

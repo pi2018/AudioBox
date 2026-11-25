@@ -1,38 +1,74 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, HttpUrl, field_validator
-import subprocess, secrets, os, logging
+import subprocess, secrets, os, re, logging
 from config import load_config, update_config
 
 router   = APIRouter(prefix="/settings", tags=["settings"])
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 logger   = logging.getLogger("settings")
 
-_TOKEN_FILE = "/opt/jv/config/.dashboard_token"
+# v1.4 : nouveau fichier, donc NOUVEAU token. L'ancien a pu être lu sur le réseau
+# (il était écrit dans le journal, lisible sans code). L'ancien fichier est effacé.
+TOKEN_FILE = "/opt/jv/config/.dashboard_token_v2"
+_ANCIEN_TOKEN = "/opt/jv/config/.dashboard_token"
+
+# Racines où l'on a le droit de monter un partage NAS.
+RACINES_NAS = ("/opt/jv/nas", "/mnt")
 
 
 def _get_token() -> str:
     try:
-        if os.path.exists(_TOKEN_FILE):
-            token = open(_TOKEN_FILE).read().strip()
+        if os.path.exists(_ANCIEN_TOKEN):
+            os.remove(_ANCIEN_TOKEN)
+        if os.path.exists(TOKEN_FILE):
+            token = open(TOKEN_FILE).read().strip()
             if token:
                 return token
         token = secrets.token_urlsafe(32)
-        os.makedirs(os.path.dirname(_TOKEN_FILE), exist_ok=True)
-        with open(_TOKEN_FILE, "w") as f:
+        os.makedirs(os.path.dirname(TOKEN_FILE), exist_ok=True)
+        # Créé directement en 600 : jamais lisible par les autres, même un instant.
+        fd = os.open(TOKEN_FILE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as f:
             f.write(token)
-        os.chmod(_TOKEN_FILE, 0o600)
-        logger.info(f"=== AudioBox Dashboard Token: {token} ===")
+        logger.info("Nouveau token du tableau de bord créé")
         return token
     except Exception as e:
         logger.error(f"Erreur génération token: {e}")
         raise HTTPException(status_code=500, detail="Impossible de générer le token")
 
 
-def verify_token(creds: HTTPAuthorizationCredentials = Depends(security)):
-    if not secrets.compare_digest(creds.credentials, _get_token()):
+def _vient_de_la_box(request: Request) -> bool:
+    """L'écran tactile tourne sur la box elle-même : il n'a pas à taper le token."""
+    hote = request.client.host if request.client else ""
+    return hote in ("127.0.0.1", "::1")
+
+
+def verify_token(request: Request,
+                 creds: HTTPAuthorizationCredentials | None = Depends(security)):
+    if _vient_de_la_box(request):
+        return True
+    if creds is None or not secrets.compare_digest(creds.credentials, _get_token()):
         raise HTTPException(status_code=401, detail="Token invalide")
     return True
+
+
+def _config_sans_secrets(cfg: dict) -> dict:
+    """La configuration renvoyée à l'écran : jamais de mot de passe ni de clé."""
+    safe = {k: v for k, v in cfg.items()
+            if not any(s in k.lower() for s in ["password", "secret", "key", "token"])}
+    if cfg.get("abs_api_key"):
+        safe["abs_api_key"] = "••••••••" + cfg["abs_api_key"][-4:]
+    return safe
+
+
+def chemin_nas_autorise(chemin: str) -> str | None:
+    """Le chemin réel (sans « .. » ni lien), s'il est bien sous une racine NAS ; sinon None."""
+    reel = os.path.realpath(chemin)
+    for racine in RACINES_NAS:
+        if reel.startswith(racine + os.sep):
+            return reel
+    return None
 
 
 # ── Schémas Pydantic ──────────────────────────────────────────────────────────
@@ -59,16 +95,35 @@ class NASMount(BaseModel):
     @field_validator("mount_point")
     @classmethod
     def validate_mount_point(cls, v):
-        if not v.startswith("/opt/jv/nas") and not v.startswith("/mnt"):
-            raise ValueError("Point de montage doit être sous /opt/jv/nas/ ou /mnt/")
-        return v
+        # realpath : « /mnt/../etc » devenait sinon un montage sur /etc, en root.
+        reel = chemin_nas_autorise(v)
+        if not reel:
+            raise ValueError("Point de montage doit être dans /opt/jv/nas/ ou /mnt/")
+        return reel
 
     @field_validator("host")
     @classmethod
     def validate_host(cls, v):
-        if not v or not v.strip():
-            raise ValueError("L'adresse du NAS ne peut pas être vide")
-        return v.strip()
+        v = (v or "").strip()
+        if not re.fullmatch(r"[A-Za-z0-9.\-]+", v):
+            raise ValueError("Adresse du NAS invalide (lettres, chiffres, points, tirets)")
+        return v
+
+    @field_validator("share")
+    @classmethod
+    def validate_share(cls, v):
+        v = (v or "").strip().strip("/")
+        # Une virgule ou un retour à la ligne permettrait d'ajouter des options de montage.
+        if not v or re.search(r"[,\n\r\x00]", v):
+            raise ValueError("Nom du partage invalide")
+        return v
+
+    @field_validator("username")
+    @classmethod
+    def validate_username(cls, v):
+        if re.search(r"[,=\n\r\x00]", v or ""):
+            raise ValueError("Nom d'utilisateur invalide")
+        return (v or "").strip()
 
 
 class RadioStation(BaseModel):
@@ -96,19 +151,12 @@ class Webhook(BaseModel):
 
 @router.get("/")
 async def get_settings(_: bool = Depends(verify_token)):
-    cfg = load_config()
-    # Masquer tous les champs sensibles
-    safe = {k: v for k, v in cfg.items()
-            if not any(s in k.lower() for s in ["password", "secret", "key", "token"])}
-    # Masquer partiellement la clé API ABS
-    if "abs_api_key" in cfg and cfg["abs_api_key"]:
-        safe["abs_api_key"] = "••••••••" + cfg["abs_api_key"][-4:]
-    return safe
+    return _config_sans_secrets(load_config())
 
 
 @router.post("/abs")
 async def set_abs(data: ABSSettings, _: bool = Depends(verify_token)):
-    return update_config({"abs_url": str(data.url), "abs_api_key": data.api_key})
+    return _config_sans_secrets(update_config({"abs_url": str(data.url), "abs_api_key": data.api_key}))
 
 
 @router.post("/nas/mount")
@@ -118,10 +166,11 @@ async def mount_nas(data: NASMount, _: bool = Depends(verify_token)):
         raise HTTPException(status_code=503, detail=f"Script de montage introuvable: {script}")
 
     try:
+        # Le mot de passe passe par l'entrée standard, jamais sur la ligne de commande
+        # (qui est visible par tous les programmes de la box avec « ps »).
         result = subprocess.run(
-            ["sudo", script, data.host, data.share, data.mount_point,
-             data.username, data.password],
-            capture_output=True, text=True, timeout=20
+            ["sudo", "-n", script, data.host, data.share, data.mount_point, data.username],
+            input=data.password + "\n", capture_output=True, text=True, timeout=20
         )
     except subprocess.TimeoutExpired:
         raise HTTPException(status_code=504, detail="Timeout lors du montage NAS")
@@ -129,7 +178,7 @@ async def mount_nas(data: NASMount, _: bool = Depends(verify_token)):
         raise HTTPException(status_code=500, detail=str(e))
 
     if result.returncode != 0:
-        err = result.stderr.strip() or result.stdout.strip()
+        err = (result.stderr.strip() or result.stdout.strip()).replace(data.password, "•••") if data.password else (result.stderr.strip() or result.stdout.strip())
         raise HTTPException(status_code=500, detail=f"Montage échoué: {err}")
 
     # Sauvegarder sans le mot de passe
@@ -144,13 +193,17 @@ async def mount_nas(data: NASMount, _: bool = Depends(verify_token)):
 
 @router.post("/nas/umount")
 async def umount_nas(mount_point: str, _: bool = Depends(verify_token)):
+    reel = chemin_nas_autorise(mount_point)
+    if not reel:
+        raise HTTPException(status_code=400, detail="Point de montage non autorisé")
+    mount_point = reel
     script = "/opt/jv/system/umount-nas.sh"
     if not os.path.exists(script):
         raise HTTPException(status_code=503, detail="Script de démontage introuvable")
 
     try:
         result = subprocess.run(
-            ["sudo", script, mount_point],
+            ["sudo", "-n", script, mount_point],
             capture_output=True, text=True, timeout=10
         )
     except subprocess.TimeoutExpired:
@@ -168,7 +221,7 @@ async def umount_nas(mount_point: str, _: bool = Depends(verify_token)):
 
 @router.post("/radios")
 async def save_radios(stations: list[RadioStation], _: bool = Depends(verify_token)):
-    return update_config({"radios": [s.model_dump() for s in stations]})
+    return _config_sans_secrets(update_config({"radios": [s.model_dump() for s in stations]}))
 
 
 @router.get("/radios")
@@ -178,7 +231,9 @@ async def get_radios():
 
 @router.post("/output")
 async def set_output(data: AudioOutput, _: bool = Depends(verify_token)):
-    return update_config({"default_output": data.output})
+    if data.output not in ("jack", "auto", "hdmi"):
+        raise HTTPException(status_code=400, detail="Sortie audio inconnue")
+    return _config_sans_secrets(update_config({"default_output": data.output}))
 
 
 @router.get("/webhooks")
@@ -188,9 +243,20 @@ async def get_webhooks(_: bool = Depends(verify_token)):
 
 @router.post("/webhooks")
 async def save_webhooks(webhooks: list[Webhook], _: bool = Depends(verify_token)):
-    return update_config({"webhooks": [w.model_dump() for w in webhooks]})
+    return _config_sans_secrets(update_config({"webhooks": [w.model_dump() for w in webhooks]}))
+
+
+@router.get("/setup-info")
+async def setup_info(request: Request):
+    """
+    Le token, mais seulement pour l'écran de la box elle-même : il le montre pour
+    qu'on le recopie sur le téléphone. Depuis le réseau, on ne le donne jamais.
+    """
+    if _vient_de_la_box(request):
+        return {"configured": False, "token": _get_token()}
+    return {"configured": True}
 
 
 @router.get("/token-hint")
 async def token_hint():
-    return {"message": "Consultez: journalctl -u jv-backend | grep 'Token'"}
+    return {"message": "Le token est sur la box, dans ~/audiobox-token.txt (écran : page Paramètres)."}
