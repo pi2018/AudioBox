@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "AudioBox",
+        "description": "Box address and, for announcements, its admin code (shown on the box screen).",
+        "data": {
+          "host": "Box address",
+          "port": "Port",
+          "token": "Admin code (for announcements)"
+        }
+      }
+    },
+    "error": {
+      "injoignable": "The box does not answer at this address.",
+      "code_refuse": "The box refused this code."
+    },
+    "abort": {
+      "already_configured": "This box is already added."
+    }
+  }
+}

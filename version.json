@@ -1,5 +1,5 @@
 {
-  "version": "1.4.0",
-  "date": "2026-11-25",
-  "notes": "Sécurité (clé Audiobookshelf, token), NAS réparé, suivi des livres audio, mise à jour depuis l'écran, Spotify et Bluetooth retirés"
+  "version": "1.5.0",
+  "date": "2026-11-26",
+  "notes": "Livres audio en plusieurs fichiers, minuterie de sommeil sur la box, vitesse retenue, intégration Home Assistant (lecteur, radios, annonces)"
 }

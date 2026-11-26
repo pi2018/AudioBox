@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "AudioBox",
+        "description": "Adresse de la box et, pour les annonces, son code admin (affiché sur l'écran de la box).",
+        "data": {
+          "host": "Adresse de la box",
+          "port": "Port",
+          "token": "Code admin (pour les annonces)"
+        }
+      }
+    },
+    "error": {
+      "injoignable": "La box ne répond pas à cette adresse.",
+      "code_refuse": "La box refuse ce code."
+    },
+    "abort": {
+      "already_configured": "Cette box est déjà ajoutée."
+    }
+  }
+}

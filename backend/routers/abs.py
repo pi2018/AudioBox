@@ -240,16 +240,19 @@ async def stream_item(item_id: str, file_id: str = ""):
 
     logger.info(f"Stream: {len(files)} fichier(s) trouvé(s) pour item {item_id}")
 
-    if files:
-        f = files[0]
-        if file_id:
-            f = next((x for x in files if str(x.get("ino","")) == file_id), files[0])
-        ino = f.get("ino", f.get("id", ""))
-        stream_url = f"{abs_url}/api/items/{item_id}/file/{ino}"
+    # Tous les fichiers du livre, mis bout à bout (avant : le premier seulement).
+    from services import montage
+    segments = montage.segments_abs(abs_url, item_id, files) if files else []
+    if file_id:
+        segments = [x for x in segments if x[0].endswith("/file/" + file_id)] or segments
+    if segments:
+        stream_url = montage.fabriquer(segments)
+        if not duration:
+            duration = sum(d for _, d in segments)
     else:
         # Fallback : stream direct via l'API ABS
         stream_url = f"{abs_url}/api/items/{item_id}/stream"
-        logger.warning(f"Aucun audioFile trouvé, utilisation du stream direct")
+        logger.warning("Aucun audioFile trouvé, utilisation du stream direct")
 
     # La clé API ne quitte plus le serveur : avant, elle était renvoyée ici à
     # quiconque sur le réseau. Le lecteur l'ajoute lui-même (voir player.play).
@@ -258,4 +261,5 @@ async def stream_item(item_id: str, file_id: str = ""):
         "title":    title,
         "duration": duration,
         "item_id":  item_id,
+        "fichiers": len(segments),
     }

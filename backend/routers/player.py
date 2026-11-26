@@ -1,9 +1,10 @@
+import time
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 import asyncio, logging
 from services.audio_manager import AudioManager
 from services.ws_manager import WSManager
-from services import abs_sync, webhooks
+from services import abs_sync, webhooks, montage
 from config import load_config
 from routers.nas import _is_safe_path
 
@@ -14,6 +15,8 @@ logger  = logging.getLogger("player")
 
 # Session de lecture courante
 _current_item_id = None
+# Ce qui joue (titre, auteur, pochette, source) : pour l'écran et Home Assistant.
+en_cours: dict = {}
 
 
 class PlayRequest(BaseModel):
@@ -40,18 +43,34 @@ class SpeedRequest(BaseModel):
 
 
 def _uri_autorisee(uri: str) -> bool:
-    """Une adresse web, ou un fichier du NAS. Rien d'autre n'arrive au lecteur."""
+    """Une adresse web, un fichier du NAS, ou un montage de livre ABS. Rien d'autre."""
+    if uri.startswith("edl://"):
+        try:
+            parts = montage.adresses(uri)
+        except ValueError:
+            return False
+        base = _base_abs()
+        return bool(base) and all(a.startswith(base + "/") for a in parts)
     if uri.startswith("http://") or uri.startswith("https://"):
         return True
     return uri.startswith("/") and _is_safe_path(uri)
 
 
+def _base_abs() -> str:
+    return str(load_config().get("abs_url", "")).rstrip("/")
+
+
 def _jeton_abs(uri: str) -> str:
-    """La clé Audiobookshelf, seulement pour une adresse de TON serveur Audiobookshelf."""
-    cfg = load_config()
-    base = str(cfg.get("abs_url", "")).rstrip("/")
-    if base and uri.startswith(base + "/"):
-        return cfg.get("abs_api_key", "")
+    """La clé Audiobookshelf, seulement si TOUT ce qui sera lu est sur ton serveur ABS."""
+    base = _base_abs()
+    if not base:
+        return ""
+    try:
+        parts = montage.adresses(uri)
+    except ValueError:
+        return ""
+    if all(a.startswith(base + "/") for a in parts):
+        return load_config().get("abs_api_key", "")
     return ""
 
 
@@ -65,7 +84,9 @@ async def play(req: PlayRequest):
     # La clé n'est plus envoyée par l'écran : le serveur l'ajoute, et seulement vers ABS.
     jeton = _jeton_abs(req.uri) if req.source == "abs" else ""
     try:
-        await audio.play(req.uri, req.output, req.start_time, jeton)
+        # La vitesse choisie reste pour les livres et podcasts ; une radio joue à 1×.
+        vitesse = audio.vitesse if req.source in ("abs", "podcast") else 1.0
+        await audio.play(req.uri, req.output, req.start_time, jeton, vitesse)
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
@@ -82,6 +103,10 @@ async def play(req: PlayRequest):
     else:
         _current_item_id = None
 
+    en_cours.clear()
+    en_cours.update({"source": req.source, "uri": req.uri, "title": req.title,
+                     "author": req.author, "cover_url": req.cover_url,
+                     "item_id": req.item_id, "output": req.output})
     await ws_mgr.broadcast({"event": "play", "uri": req.uri,
                              "title": req.title, "author": req.author})
     asyncio.create_task(webhooks.fire("play", {
@@ -164,6 +189,52 @@ async def set_volume(level: int):
     return {"volume": level}
 
 
+# ── Minuterie de sommeil ─────────────────────────────────────────────────────
+# Elle tourne sur la box : avant, elle vivait dans la page et s'arrêtait si
+# l'écran ou le téléphone qui l'avait lancée se mettait en veille.
+_sommeil: asyncio.Task | None = None
+_sommeil_fin: float = 0.0
+
+
+class SommeilRequest(BaseModel):
+    minutes: int = 0   # 0 = annuler
+
+
+async def _dormir(secondes: float):
+    global _sommeil_fin
+    try:
+        attente = max(0.0, secondes - 30)
+        await asyncio.sleep(attente)
+        # 30 dernières secondes : le son baisse doucement au lieu de couper net.
+        depart = audio._volume
+        for i in range(30):
+            await audio.set_volume(max(0, int(depart * (29 - i) / 30)))
+            await asyncio.sleep(1)
+        await stop()
+        await audio.set_volume(depart)
+        await ws_mgr.broadcast({"event": "sleep_done"})
+    except asyncio.CancelledError:
+        pass
+    finally:
+        _sommeil_fin = 0.0
+
+
+@router.post("/sleep")
+async def minuterie(req: SommeilRequest):
+    global _sommeil, _sommeil_fin
+    if _sommeil and not _sommeil.done():
+        _sommeil.cancel()
+    _sommeil_fin = 0.0
+    if req.minutes > 0:
+        _sommeil_fin = time.time() + req.minutes * 60
+        _sommeil = asyncio.create_task(_dormir(req.minutes * 60))
+    return {"minutes": req.minutes, "reste": sommeil_reste()}
+
+
+def sommeil_reste() -> int:
+    return max(0, int(_sommeil_fin - time.time())) if _sommeil_fin else 0
+
+
 @router.post("/speed")
 async def set_speed(req: SpeedRequest):
     """Règle la vitesse de lecture."""
@@ -203,10 +274,23 @@ async def set_equalizer(req: EQRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _etat_complet(state: dict) -> dict:
+    """L'état du lecteur, plus la minuterie, la vitesse et ce qui joue."""
+    state["sommeil"] = sommeil_reste()
+    state["vitesse"] = audio.vitesse
+    state["item_id"] = _current_item_id
+    if state.get("stopped"):
+        state.update({"source": "", "title": "", "author": "", "cover_url": ""})
+    else:
+        for k in ("source", "title", "author", "cover_url"):
+            state[k] = en_cours.get(k, "")
+    return state
+
+
 @router.get("/status")
 async def status():
     try:
-        return await audio.get_status()
+        return _etat_complet(await audio.get_status())
     except Exception as e:
         logger.error(f"Erreur status: {e}")
         return {"playing": False, "paused": False, "stopped": True,
@@ -219,7 +303,7 @@ async def ws_endpoint(ws: WebSocket):
     try:
         while True:
             try:
-                state = await audio.get_status()
+                state = _etat_complet(await audio.get_status())
                 await ws.send_json(state)
             except Exception:
                 break

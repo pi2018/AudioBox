@@ -13,6 +13,7 @@ class AudioManager:
         self._volume = 80
         self._paused = False
         self._eq_filter = ""  # Filtre égaliseur actif
+        self.vitesse = 1.0    # retenue d'un livre à l'autre
 
     # ── Vérifications ────────────────────────────────────────────────────────
 
@@ -23,7 +24,7 @@ class AudioManager:
     # ── Playback ──────────────────────────────────────────────────────────────
 
     async def play(self, uri: str, output: str = "jack", start_time: float = 0.0,
-                   http_token: str = ""):
+                   http_token: str = "", vitesse: float = 1.0):
         self._check_mpv()
         # Arrêt complet + délai pour s'assurer que mpv est bien terminé
         await self.stop()
@@ -52,6 +53,8 @@ class AudioManager:
 
         if start_time > 0:
             cmd.append(f"--start={start_time}")
+        if vitesse and abs(vitesse - 1.0) > 0.01:
+            cmd.append(f"--speed={vitesse}")
         # « -- » : tout ce qui suit est un fichier, jamais une option. Sans lui, une
         # adresse commençant par « --script=… » aurait été comprise comme une option.
         cmd.append("--")
@@ -125,7 +128,8 @@ class AudioManager:
         await self._mpv_cmd({"command": ["set_property", "volume", self._volume]})
 
     async def set_speed(self, speed: float):
-        """Règle la vitesse de lecture mpv."""
+        """Règle la vitesse de lecture mpv (retenue pour le livre suivant)."""
+        self.vitesse = speed
         await self._mpv_cmd({"command": ["set_property", "speed", speed]})
 
     async def set_equalizer(self, af_filter: str):

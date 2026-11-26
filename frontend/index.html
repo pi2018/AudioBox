@@ -2058,7 +2058,12 @@ function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   ws = new WebSocket(`${proto}://${location.host}/api/player/ws`);
   ws.onmessage = e => {
-    pState = JSON.parse(e.data);
+    const msg = JSON.parse(e.data);
+    // Les annonces (« pause », « fin de minuterie »…) ne sont pas l'état du lecteur :
+    // avant, elles l'écrasaient et la barre retombait à 0 un instant.
+    if (msg.event) return;
+    pState = msg;
+    syncSleepFromStatus(pState);
     document.getElementById('pd-time-cur').textContent = fmtTime(pState.position);
     document.getElementById('pd-time-dur').textContent = fmtTime(pState.duration);
     const pct = pState.duration > 0 ? (pState.position / pState.duration * 100).toFixed(1) : 0;
@@ -2397,7 +2402,7 @@ var _sleepEnd   = null;
 var _sleepInterval = null;
 
 function setSleepTimer(minutes) {
-  cancelSleepTimer();
+  cancelSleepTimer(false);
   _sleepEnd = Date.now() + minutes * 60 * 1000;
 
   // Mettre à jour les boutons
@@ -2416,17 +2421,42 @@ function setSleepTimer(minutes) {
     const el = document.getElementById('sleep-countdown');
     if (el) el.textContent = `${mins}:${secs.toString().padStart(2,'0')}`;
     if (remaining <= 0) {
+      // C'est la box qui arrête la lecture (en baissant le son) : ici on n'affiche que le compte.
       clearInterval(_sleepInterval);
-      api('POST', '/player/stop').catch(() => {});
-      cancelSleepTimer();
+      cancelSleepTimer(false);
       toast('💤 Bonne nuit !');
     }
   }, 1000);
 
+  // La minuterie tourne sur la box : elle marche même si cet écran se met en veille.
+  api('POST', '/player/sleep', {minutes}).catch(e => toast('Erreur minuterie: ' + e.message));
   toast(`💤 Arrêt dans ${minutes} minutes`);
 }
 
-function cancelSleepTimer() {
+// La box connaît le temps restant : on se recale dessus (minuterie lancée ailleurs).
+function syncSleepFromStatus(st) {
+  if (!st || typeof st.sommeil !== 'number') return;
+  if (st.sommeil > 0) {
+    const fin = Date.now() + st.sommeil * 1000;
+    if (!_sleepEnd || Math.abs(fin - _sleepEnd) > 5000) {
+      if (_sleepInterval) clearInterval(_sleepInterval);
+      _sleepEnd = fin;
+      const btn = document.getElementById('sleep-cancel');
+      if (btn) btn.style.display = 'inline-flex';
+      _sleepInterval = setInterval(() => {
+        const r = Math.max(0, _sleepEnd - Date.now());
+        const el = document.getElementById('sleep-countdown');
+        if (el) el.textContent = `${Math.floor(r/60000)}:${Math.floor((r%60000)/1000).toString().padStart(2,'0')}`;
+        if (r <= 0) cancelSleepTimer(false);
+      }, 1000);
+    }
+  } else if (_sleepEnd) {
+    cancelSleepTimer(false);
+  }
+}
+
+function cancelSleepTimer(prevenirLaBox = true) {
+  if (prevenirLaBox && _sleepEnd) api('POST', '/player/sleep', {minutes: 0}).catch(() => {});
   if (_sleepInterval) clearInterval(_sleepInterval);
   _sleepTimer = null;
   _sleepEnd   = null;
