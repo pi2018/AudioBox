@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -63,7 +64,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Onglet(val nom: String) { LECTURE("Lecture"), RADIOS("Radios"), REGLAGES("Réglages") }
+private enum class Onglet(val nom: String) { LECTURE("Lecture"), LIVRES("Livres"), RADIOS("Radios"), REGLAGES("Réglages") }
 
 @Composable
 private fun Appli() {
@@ -117,6 +118,7 @@ private fun Appli() {
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when (onglet) {
                 Onglet.LECTURE -> EcranLecture(etat, theme, box, agir)
+                Onglet.LIVRES -> EcranLivres(theme, box) { onglet = Onglet.LECTURE; portee.launch { try { etat = box.etat() } catch (e: Exception) {} } }
                 Onglet.RADIOS -> EcranRadios(etat, theme, agir, box)
                 Onglet.REGLAGES -> EcranReglages(
                     adresse, theme,
@@ -135,11 +137,11 @@ private fun Appli() {
                     o.nom,
                     color = if (choisi) theme.accent else Couleurs.doux,
                     fontWeight = if (choisi) FontWeight.Bold else FontWeight.Normal,
-                    fontSize = 15.sp,
+                    fontSize = 14.sp,
                     modifier = Modifier
                         .background(if (choisi) theme.doux else Color.Transparent, RoundedCornerShape(14.dp))
                         .clickable { onglet = o }
-                        .padding(horizontal = 18.dp, vertical = 12.dp),
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
                 )
             }
         }
@@ -188,7 +190,7 @@ private fun EcranLecture(etat: Etat?, theme: Theme, box: AudioBoxApi, agir: (sus
         ) {
             Text("Rien ne joue", color = Couleurs.texte, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
-            Text("Choisis une radio dans l'onglet Radios,\nou lance un livre sur l'écran de la box.",
+            Text("Choisis un livre dans l'onglet Livres\nou une radio dans l'onglet Radios.",
                 color = Couleurs.doux, fontSize = 14.sp)
             // La dernière écoute peut repartir d'ici (un livre reprend là où il s'était arrêté).
             val dernier = etat?.dernier ?: ""
@@ -297,6 +299,36 @@ private fun EcranLecture(etat: Etat?, theme: Theme, box: AudioBoxApi, agir: (sus
             }
         }
 
+        if (etat.estUnLivre && etat.livreId.isNotBlank()) {
+            var chapitres by remember(etat.livreId) { mutableStateOf<List<Chapitre>>(emptyList()) }
+            var ouverts by remember(etat.livreId) { mutableStateOf(false) }
+            LaunchedEffect(etat.livreId) { chapitres = try { box.chapitres(etat.livreId) } catch (e: Exception) { emptyList() } }
+            if (chapitres.isNotEmpty()) {
+                val actuel = chapitres.indexOfLast { it.debut <= etat.position + 0.5 }.coerceAtLeast(0)
+                Spacer(Modifier.height(14.dp))
+                Pastille(if (ouverts) "Masquer les chapitres" else "Chapitres (${actuel + 1}/${chapitres.size})", ouverts, theme) { ouverts = !ouverts }
+                if (ouverts) {
+                    Spacer(Modifier.height(8.dp))
+                    Column(
+                        Modifier.fillMaxWidth().heightIn(max = 280.dp)
+                            .background(Couleurs.carte, RoundedCornerShape(14.dp)).verticalScroll(rememberScrollState()),
+                    ) {
+                        chapitres.forEachIndexed { i, c ->
+                            Row(
+                                Modifier.fillMaxWidth().clickable { agir { box.allerA(c.debut) } }.padding(horizontal = 14.dp, vertical = 11.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(c.titre, color = if (i == actuel) theme.accent else Couleurs.texte, fontSize = 14.sp,
+                                    fontWeight = if (i == actuel) FontWeight.Bold else FontWeight.Normal,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                Text(temps(c.debut), color = Couleurs.doux, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         if (etat.estUnLivre) {
             Spacer(Modifier.height(14.dp))
             Text("Vitesse", color = Couleurs.doux, fontSize = 13.sp)
@@ -312,38 +344,221 @@ private fun EcranLecture(etat: Etat?, theme: Theme, box: AudioBoxApi, agir: (sus
 }
 
 @Composable
+private fun Champ(valeur: String, surChange: (String) -> Unit, libelle: String, theme: Theme, modifier: Modifier = Modifier) {
+    OutlinedTextField(
+        value = valeur, onValueChange = surChange, singleLine = true,
+        label = { Text(libelle, color = Couleurs.doux) },
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = Couleurs.texte, unfocusedTextColor = Couleurs.texte,
+            focusedBorderColor = theme.accent, unfocusedBorderColor = Couleurs.trait,
+            cursorColor = theme.accent,
+        ),
+        modifier = modifier.fillMaxWidth(),
+    )
+}
+
+@Composable
+private fun LigneLivre(livre: Livre, theme: Theme, box: AudioBoxApi, enCours: Boolean, surClic: () -> Unit) {
+    var image by remember(livre.id) { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(livre.id) { image = box.pochette("/api/abs/cover/" + livre.id) }
+    Row(
+        Modifier.fillMaxWidth().background(Couleurs.carte, RoundedCornerShape(14.dp))
+            .clickable(onClick = surClic).padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(62.dp).background(theme.pochette, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
+            val img = image
+            if (img != null) Image(img.asImageBitmap(), null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            else Text("📚", fontSize = 22.sp)
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(livre.titre, color = Couleurs.texte, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (livre.auteur.isNotBlank()) Text(livre.auteur, color = Couleurs.doux, fontSize = 13.sp,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            val sous = when {
+                livre.termine -> "Terminé"
+                livre.progression > 0.005 -> "${(livre.progression * 100).toInt()} % · reste " + temps(livre.duree * (1 - livre.progression))
+                livre.duree > 0 -> temps(livre.duree)
+                else -> ""
+            }
+            if (sous.isNotEmpty()) Text(sous, color = if (enCours) theme.accent else Couleurs.doux, fontSize = 12.sp)
+            if (livre.progression > 0.005 && !livre.termine) {
+                Spacer(Modifier.height(5.dp))
+                Box(Modifier.fillMaxWidth().height(4.dp).background(Couleurs.trait, RoundedCornerShape(2.dp))) {
+                    Box(Modifier.fillMaxWidth(livre.progression.toFloat().coerceIn(0f, 1f)).height(4.dp)
+                        .background(theme.accent, RoundedCornerShape(2.dp)))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EcranLivres(theme: Theme, box: AudioBoxApi, surLance: () -> Unit) {
+    var recherche by remember { mutableStateOf("") }
+    var biblio by remember { mutableStateOf<Bibliotheque?>(null) }
+    var message by remember { mutableStateOf("") }
+    var charge by remember { mutableStateOf(true) }
+    var relire by remember { mutableStateOf(0) }
+    var lance by remember { mutableStateOf("") }
+    val portee = rememberCoroutineScope()
+
+    LaunchedEffect(box, recherche, relire) {
+        if (recherche.isNotEmpty()) delay(350)
+        charge = true
+        try {
+            biblio = box.bibliotheque(recherche, rafraichir = relire > 0 && recherche.isEmpty())
+            message = ""
+        } catch (e: Exception) {
+            message = e.message ?: "La bibliothèque ne répond pas"
+        }
+        charge = false
+    }
+
+    val ouvrir: (Livre) -> Unit = { livre ->
+        if (lance.isEmpty()) {
+            lance = livre.id
+            portee.launch {
+                try {
+                    box.lancerLivre(livre.id)
+                    message = ""
+                    surLance()
+                } catch (e: Exception) {
+                    message = e.message ?: "Le livre ne démarre pas"
+                }
+                lance = ""
+            }
+        }
+    }
+
+    Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+        Spacer(Modifier.height(12.dp))
+        Champ(recherche, { recherche = it }, "Chercher un titre ou un auteur", theme)
+        Spacer(Modifier.height(6.dp))
+        if (message.isNotEmpty()) Text(message, color = Color(0xFFFFB4A8), fontSize = 13.sp, modifier = Modifier.padding(vertical = 6.dp))
+        if (lance.isNotEmpty()) Text("Lancement du livre…", color = theme.accent, fontSize = 13.sp, modifier = Modifier.padding(vertical = 6.dp))
+        val b = biblio
+        if (b == null) {
+            if (charge) Text("Chargement des livres…", color = Couleurs.doux, fontSize = 14.sp, modifier = Modifier.padding(8.dp))
+        } else if (!b.configure) {
+            Text("Audiobookshelf n'est pas réglé sur la box (Paramètres › Audiobookshelf).", color = Couleurs.doux, fontSize = 14.sp,
+                modifier = Modifier.padding(8.dp))
+        } else {
+            LazyColumn(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (b.enCours.isNotEmpty()) {
+                    item(key = "t-cours") { Text("Continuer l'écoute", color = theme.accent, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+                    items(b.enCours, key = { "c-" + it.id }) { l -> LigneLivre(l, theme, box, true) { ouvrir(l) } }
+                }
+                item(key = "t-tous") {
+                    Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (recherche.isEmpty()) "Tous les livres (${b.livres.size})" else "${b.livres.size} résultat(s)",
+                            color = theme.accent, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        if (recherche.isEmpty()) Pastille("Actualiser", false, theme) { relire++ }
+                    }
+                }
+                if (b.livres.isEmpty()) item(key = "vide") {
+                    Text(if (recherche.isEmpty()) "Aucun livre trouvé." else "Aucun résultat.", color = Couleurs.doux, fontSize = 14.sp)
+                }
+                items(b.livres, key = { "l-" + it.id }) { l -> LigneLivre(l, theme, box, false) { ouvrir(l) } }
+                item(key = "bas") { Spacer(Modifier.height(10.dp)) }
+            }
+        }
+    }
+}
+
+@Composable
 private fun EcranRadios(etat: Etat?, theme: Theme, agir: (suspend () -> Unit) -> Unit, box: AudioBoxApi) {
     val radios = etat?.radios ?: emptyList()
-    if (radios.isEmpty()) {
-        Column(Modifier.fillMaxSize().padding(28.dp), verticalArrangement = Arrangement.Center) {
-            Text("Aucune radio", color = Couleurs.texte, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            Text("Ajoute tes radios favorites dans Paramètres sur l'écran de la box.", color = Couleurs.doux, fontSize = 14.sp)
-        }
-        return
-    }
+    var aRetirer by remember { mutableStateOf("") }
+    var recherche by remember { mutableStateOf("") }
+    var trouvees by remember { mutableStateOf<List<RadioTrouvee>>(emptyList()) }
+    var info by remember { mutableStateOf("") }
+    var main by remember { mutableStateOf(false) }
+    var nomMain by remember { mutableStateOf("") }
+    var urlMain by remember { mutableStateOf("") }
+    val portee = rememberCoroutineScope()
+
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = 18.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item { Spacer(Modifier.height(12.dp)) }
-        items(radios) { nom ->
+        item { Spacer(Modifier.height(6.dp)) }
+        if (radios.isEmpty()) item {
+            Text("Aucune radio pour l'instant : ajoutes-en une en bas.", color = Couleurs.doux, fontSize = 14.sp)
+        }
+        items(radios, key = { "r-" + it }) { nom ->
             val enCours = etat?.origine == "radio" && etat.titre == nom && !etat.arrete
             Row(
                 Modifier
                     .fillMaxWidth()
                     .background(Couleurs.carte, RoundedCornerShape(16.dp))
-                    .border(2.dp, if (enCours) theme.accent else Color.Transparent, RoundedCornerShape(16.dp))
-                    .clickable { agir { box.radio(nom) } }
-                    .padding(horizontal = 18.dp, vertical = 18.dp),
+                    .border(2.dp, if (enCours) theme.accent else Color.Transparent, RoundedCornerShape(16.dp)),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(nom, color = Couleurs.texte, fontSize = 18.sp, fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f))
-                if (enCours) Text("En écoute", color = theme.accent, fontSize = 13.sp)
+                Row(Modifier.weight(1f).clickable { agir { box.radio(nom) } }.padding(horizontal = 18.dp, vertical = 18.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Text(nom, color = Couleurs.texte, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    if (enCours) Text("En écoute", color = theme.accent, fontSize = 13.sp)
+                }
+                Text(
+                    if (aRetirer == nom) "Retirer ?" else "✕",
+                    color = if (aRetirer == nom) Color(0xFFFFB4A8) else Couleurs.doux, fontSize = 15.sp,
+                    modifier = Modifier.clickable {
+                        if (aRetirer == nom) { aRetirer = ""; agir { box.supprimerRadio(nom) } } else aRetirer = nom
+                    }.padding(horizontal = 16.dp, vertical = 18.dp),
+                )
             }
         }
-        item { Spacer(Modifier.height(12.dp)) }
+
+        item {
+            Spacer(Modifier.height(10.dp))
+            Text("Ajouter une radio", color = Couleurs.texte, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Champ(recherche, { recherche = it }, "Nom de la radio (ex. France Inter)", theme)
+            Spacer(Modifier.height(8.dp))
+            Pastille("Chercher", true, theme) {
+                portee.launch {
+                    try {
+                        trouvees = box.chercherRadios(recherche)
+                        info = if (trouvees.isEmpty()) "Aucune radio trouvée." else ""
+                    } catch (e: Exception) {
+                        info = e.message ?: "Recherche impossible"
+                    }
+                }
+            }
+            if (info.isNotEmpty()) Text(info, color = Couleurs.doux, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+        }
+        items(trouvees, key = { "t-" + it.url }) { r ->
+            val deja = radios.any { it.equals(r.nom, ignoreCase = true) }
+            Row(
+                Modifier.fillMaxWidth().background(Couleurs.carte, RoundedCornerShape(14.dp)).padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(r.nom, color = Couleurs.texte, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (r.pays.isNotBlank()) Text(r.pays, color = Couleurs.doux, fontSize = 12.sp)
+                }
+                if (deja) Text("Ajoutée", color = Couleurs.doux, fontSize = 13.sp)
+                else Pastille("Ajouter", false, theme) { agir { box.ajouterRadio(r.nom, r.url, r.logo) } }
+            }
+        }
+        item {
+            Spacer(Modifier.height(4.dp))
+            Text(if (main) "Masquer l'adresse à la main" else "Ou avec l'adresse du flux…", color = theme.accent, fontSize = 14.sp,
+                modifier = Modifier.clickable { main = !main }.padding(vertical = 6.dp))
+            if (main) {
+                Champ(nomMain, { nomMain = it }, "Nom", theme)
+                Spacer(Modifier.height(8.dp))
+                Champ(urlMain, { urlMain = it }, "Adresse du flux (http://…)", theme)
+                Spacer(Modifier.height(8.dp))
+                Pastille("Ajouter cette radio", true, theme) {
+                    agir { box.ajouterRadio(nomMain, urlMain); nomMain = ""; urlMain = "" }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+        }
     }
 }
 
