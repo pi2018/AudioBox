@@ -1,5 +1,5 @@
 {
-  "version": "1.6.0",
+  "version": "1.7.0",
   "date": "2026-11-26",
-  "notes": "Corrections : mise à jour depuis l'écran fiable (vérifiée, avec son résultat), progression des livres plus écrasée en changeant de livre, position qui ne retombe plus à 0, minuterie et vitesse utilisables sur l'écran, chapitres, NAS (montage et remontage au démarrage), annonces Home Assistant, sécurité du code admin"
+  "notes": "Appli téléphone : bibliothèque de livres (recherche, en cours, reprise), chapitres, ajout et retrait de radios (recherche dans l'annuaire)"
 }

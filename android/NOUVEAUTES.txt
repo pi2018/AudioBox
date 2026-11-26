@@ -1,6 +1,5 @@
 Appli AudioBox
-• Bouton « Reprendre » quand rien ne joue : la dernière écoute repart (un livre là où il s'était arrêté).
-• L'adresse de la box se corrige toute seule (sans « http:// » ou avec le port oublié).
-• Le volume ne tombe plus à 0 en touchant la barre sans la faire glisser.
-• Ce qui joue sur la box : pochette, titre, avance, temps restant ; lecture / pause / arrêt, −30 s / +30 s, volume.
-• Radios favorites, minuterie de sommeil, vitesse des livres audio, 6 couleurs.
+• Nouvel onglet Livres : toute ta bibliothèque Audiobookshelf avec pochettes, recherche (titre ou auteur), « Continuer l'écoute » et ta progression. Touche un livre : il démarre là où tu l'avais laissé.
+• Chapitres : sur l'écran Lecture, touche « Chapitres » pour aller directement à un chapitre.
+• Radios : ajoute une radio en la cherchant par son nom (annuaire Radio Browser) ou avec son adresse, et retire-la avec ✕ (touche deux fois).
+• Toujours : reprise de la dernière écoute, volume, −30/+30 s, minuterie de sommeil, vitesse des livres, 6 couleurs.

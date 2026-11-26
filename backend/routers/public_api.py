@@ -5,6 +5,10 @@ les scripts : état, lecture, pause, volume, radios. Ce qui fait télécharger u
 """
 import asyncio
 import logging
+import time
+import unicodedata
+
+import httpx
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -12,9 +16,12 @@ from pydantic import BaseModel
 from config import load_config
 # Lecture, pause et arrêt passent par les fonctions du lecteur : sinon l'envoi de la
 # position à Audiobookshelf n'était pas suivi.
+from routers import abs as absr
 from routers import player as lecteur
 from routers.player import audio, ws_mgr
 from routers.settings import verify_token
+from config import update_config
+from services import abs_sync
 
 router = APIRouter(prefix="/public", tags=["public"])
 logger = logging.getLogger("public_api")
@@ -225,3 +232,153 @@ async def precedent():
     if st.get("duration"):
         await audio.seek(max(0, st.get("position", 0) - 30))
     return {"status": "ok"}
+
+
+# ── Pour l'appli du téléphone : livres et radios ─────────────────────────────
+
+_cache_livres: dict = {"quand": 0.0, "livres": []}
+DUREE_CACHE = 60.0
+
+
+def _livre_vu_par_l_appli(item: dict, prog: dict | None) -> dict:
+    m = (item.get("media") or {}).get("metadata") or {}
+    prog = prog or {}
+    return {
+        "id": item.get("id", ""),
+        "titre": m.get("title") or "Sans titre",
+        "auteur": m.get("authorName") or "",
+        "duree": float((item.get("media") or {}).get("duration") or 0),
+        "progression": float(prog.get("progress") or 0),
+        "termine": bool(prog.get("isFinished")),
+        "maj": float(prog.get("lastUpdate") or 0),
+    }
+
+
+async def _tous_les_livres(forcer: bool = False) -> list[dict]:
+    """Tous les livres des bibliothèques Audiobookshelf, avec ta progression (gardés 1 min)."""
+    if not forcer and time.monotonic() - _cache_livres["quand"] < DUREE_CACHE and _cache_livres["livres"]:
+        return _cache_livres["livres"]
+    cfg = load_config()
+    if not cfg.get("abs_url") or not cfg.get("abs_api_key"):
+        return []
+    libs = (await absr._abs_get("/api/libraries")).get("libraries", [])
+    libs = [b for b in libs if b.get("mediaType", "book") == "book"] or libs
+    me = await absr._abs_get("/api/me")
+    progres = {p.get("libraryItemId"): p for p in (me.get("mediaProgress", []) if isinstance(me, dict) else [])}
+    livres, vus = [], set()
+    for lib in libs:
+        page = 0
+        while page < 20:
+            res = await absr._abs_get(f"/api/libraries/{lib['id']}/items",
+                                      params={"limit": 200, "page": page, "sort": "media.metadata.title"})
+            items = res.get("results", []) if isinstance(res, dict) else []
+            for it in items:
+                if it.get("id") and it["id"] not in vus:
+                    vus.add(it["id"])
+                    livres.append(_livre_vu_par_l_appli(it, progres.get(it["id"])))
+            if len(items) < 200:
+                break
+            page += 1
+    _cache_livres.update({"quand": time.monotonic(), "livres": livres})
+    return livres
+
+
+def _simple(texte: str) -> str:
+    """Minuscules sans accents : « miser » trouve « Les Misérables »."""
+    return "".join(c for c in unicodedata.normalize("NFD", texte.lower())
+                   if unicodedata.category(c) != "Mn").strip()
+
+
+@router.get("/livres")
+async def liste_livres(q: str = "", rafraichir: bool = False):
+    """Les livres (avec recherche) et ceux en cours d'écoute, pour l'appli."""
+    livres = await _tous_les_livres(rafraichir)
+    cherche = _simple(q)
+    if cherche:
+        livres = [x for x in livres if cherche in _simple(x["titre"]) or cherche in _simple(x["auteur"])]
+    en_cours = sorted((x for x in livres if x["progression"] > 0.01 and not x["termine"]),
+                      key=lambda x: x["maj"], reverse=True)[:10]
+    return {"livres": livres[:300], "total": len(livres), "en_cours": [] if cherche else en_cours,
+            "configure": bool(load_config().get("abs_url") and load_config().get("abs_api_key"))}
+
+
+@router.post("/livre/{item_id}")
+async def lancer_livre(item_id: str):
+    """Lance un livre là où tu l'avais laissé (comme sur l'écran de la box)."""
+    flux = await absr.stream_item(item_id)
+    try:
+        item = await absr.get_item(item_id)
+    except HTTPException:
+        item = {}
+    m = (item.get("media") or {}).get("metadata") or {}
+    duree = float(flux.get("duration") or 0)
+    debut = await abs_sync.get_server_position(item_id)
+    if duree and debut > duree - 10:     # livre fini : on le reprend du début
+        debut = 0.0
+    await lecteur.lancer(lecteur.PlayRequest(
+        source="abs", uri=flux["url"], item_id=item_id, duration=duree,
+        title=flux.get("title") or m.get("title", ""), author=m.get("authorName", ""),
+        start_time=debut, output=load_config().get("default_output", "jack")))
+    _cache_livres["quand"] = 0.0
+    return {"status": "playing", "titre": flux.get("title", ""), "position": debut}
+
+
+@router.get("/livre/{item_id}/chapitres")
+async def chapitres(item_id: str):
+    return {"chapitres": await absr.get_chapters(item_id)}
+
+
+@router.get("/radios/recherche")
+async def chercher_radios(q: str):
+    """Cherche des radios sur Radio Browser (annuaire libre) pour les ajouter."""
+    q = q.strip()
+    if len(q) < 2:
+        raise HTTPException(status_code=400, detail="Tape au moins 2 lettres")
+    try:
+        async with httpx.AsyncClient(timeout=8.0, headers={"User-Agent": "AudioBox"}) as c:
+            r = await c.get("https://de1.api.radio-browser.info/json/stations/search",
+                            params={"name": q, "limit": 15, "hidebroken": "true",
+                                    "order": "clickcount", "reverse": "true"})
+            r.raise_for_status()
+            trouvees = r.json()
+    except Exception:
+        raise HTTPException(status_code=502, detail="L'annuaire des radios ne répond pas")
+    sortie, vus = [], set()
+    for s in trouvees:
+        url = (s.get("url_resolved") or s.get("url") or "").strip()
+        nom = (s.get("name") or "").strip()
+        if nom and url.startswith(("http://", "https://")) and url not in vus:
+            vus.add(url)
+            sortie.append({"name": nom[:80], "url": url, "favicon": s.get("favicon") or "",
+                           "pays": s.get("country") or ""})
+    return {"radios": sortie}
+
+
+class NouvelleRadio(BaseModel):
+    name: str
+    url: str
+    favicon: str = ""
+
+
+@router.post("/radios")
+async def ajouter_radio(radio: NouvelleRadio):
+    """Sans code : une radio ajoutée ne fait rien tant qu'on ne la lance pas, et ne donne accès à aucun secret."""
+    nom = "".join(ch for ch in radio.name if ch.isprintable()).strip()[:80]
+    if not nom:
+        raise HTTPException(status_code=400, detail="Donne un nom à la radio")
+    url = _adresse_web(radio.url)
+    favicon = radio.favicon.strip() if radio.favicon.strip().startswith(("http://", "https://")) else ""
+    radios = [r for r in load_config().get("radios", []) if r.get("name", "").strip().lower() != nom.lower()]
+    radios.append({"name": nom, "url": url, "favicon": favicon})
+    update_config({"radios": radios})
+    return {"status": "ok", "radios": [r["name"] for r in radios]}
+
+
+@router.delete("/radios/{name:path}")
+async def supprimer_radio(name: str):
+    avant = load_config().get("radios", [])
+    apres = [r for r in avant if r.get("name", "").strip().lower() != name.strip().lower()]
+    if len(apres) == len(avant):
+        raise HTTPException(status_code=404, detail=f"Radio « {name} » introuvable")
+    update_config({"radios": apres})
+    return {"status": "ok", "radios": [r["name"] for r in apres]}
