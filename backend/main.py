@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
     try:
         from routers.settings import _get_token, TOKEN_FILE
         _get_token()
-        logger.info(f"Token du tableau de bord prêt (fichier {TOKEN_FILE})")
+        logger.info(f"AudioBox {system.VERSION_EN_COURS} — token prêt (fichier {TOKEN_FILE})")
     except Exception as e:
         logger.error(f"Impossible de générer le token: {e}")
     app.state.ws_manager = ws_manager
@@ -34,7 +34,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="AudioBox API",
-    version="1.0.0",
+    version=system.VERSION_EN_COURS,
     description="Backend AudioBox — Audiobookshelf, Radios, YouTube, NAS",
     lifespan=lifespan
 )

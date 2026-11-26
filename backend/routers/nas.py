@@ -14,8 +14,11 @@ def _is_safe_path(path: str) -> bool:
     return any(p == root or p.startswith(root + os.sep) for root in ALLOWED_ROOTS)
 
 
+# Ces deux pages sont des « def » simples : FastAPI les fait tourner à part. Un NAS
+# lent ou éteint ne fige plus toute la box (écran, lecture) pendant qu'on le lit.
+
 @router.get("/mounts")
-async def list_mounts():
+def list_mounts():
     """Liste les points de montage NAS configurés et leur état."""
     mounts = load_config().get("nas_mounts", [])
     result = []
@@ -32,7 +35,7 @@ async def list_mounts():
 
 
 @router.get("/browse")
-async def browse(path: str = "/opt/jv/nas"):
+def browse(path: str = "/opt/jv/nas"):
     """Parcourt un répertoire NAS monté."""
     # Résoudre les symlinks et .. pour éviter les traversals
     try:

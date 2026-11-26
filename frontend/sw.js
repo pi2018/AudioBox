@@ -3,7 +3,7 @@
 // affiche tout de suite la nouvelle version. Avant (v1.3), la vieille page en cache
 // était resservie à chaque démarrage. Le cache ne sert plus que si le serveur ne
 // répond pas (box en train de redémarrer).
-const CACHE = 'audiobox-v1.4';
+const CACHE = 'audiobox-v1.6';
 const PRECACHE = ['/', '/index.html', '/manifest.json'];
 
 self.addEventListener('install', e => {

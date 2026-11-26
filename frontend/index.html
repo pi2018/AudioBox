@@ -420,6 +420,37 @@ html,body{font-family:Inter,-apple-system,'Segoe UI',sans-serif;background:var(-
 .theme-sw{width:44px;height:44px;border-radius:22px;border:3px solid transparent;cursor:pointer;padding:0}
 .theme-sw.on{border-color:#fff}
 .theme-help{font-size:12px;color:var(--txt2)}
+
+/* Fenêtres « vitesse » et « minuterie » (1.6). Avant, la fenêtre vitesse n'avait aucun
+   style : elle restait hors de l'écran et le bouton « 1x » ne faisait rien. */
+#speed-popup,#sleep-popup{display:none;position:fixed;right:14px;bottom:74px;z-index:210;width:300px;background:#1A1C23;border:1px solid #2C2F3A;border-radius:18px;padding:14px 16px 16px;box-shadow:0 18px 40px rgba(0,0,0,.5);flex-direction:column;gap:12px}
+#speed-popup.show,#sleep-popup.show{display:flex}
+.sp-titre{font-size:13px;font-weight:600;color:var(--txt2);padding-right:34px}
+.sp-close{position:absolute;top:6px;right:8px;width:34px;height:34px;background:none;border:none;color:var(--txt3);font-size:16px;cursor:pointer;border-radius:17px}
+.sp-presets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sp-preset{height:42px;border-radius:12px;border:none;background:var(--bg3);color:var(--txt);font-size:14px;font-weight:600;cursor:pointer}
+.sp-preset.active{background:var(--acc);color:var(--acc-ink)}
+.sp-fine{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sp-fine-btn{width:42px;height:42px;border-radius:21px;border:none;background:var(--bg3);color:var(--txt);font-size:20px;cursor:pointer}
+#sp-current{font-size:18px;font-weight:700;color:var(--acc)}
+#pb-sleep-label{font-size:11px;color:var(--txt3);background:var(--bg3);padding:2px 7px;border-radius:10px;cursor:pointer;border:none;white-space:nowrap}
+#pb-sleep-label.actif{background:var(--acc-soft);color:var(--acc)}
+.speed-btn{background:var(--bg3);border:none;color:var(--txt2);border-radius:14px;padding:6px 12px;font-size:12px;cursor:pointer}
+.speed-btn.active{background:var(--acc);color:var(--acc-ink)}
+.pv-extras{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.nas-montage{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg2);border-radius:var(--rsm);margin-bottom:6px;font-size:13px}
+.nas-montage span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Fond flou (pochette) de l'écran du livre. Avant la 1.6, ce calque invisible était
+   posé PAR-DESSUS les boutons : lecture, ±30 s, arrêt, volume… ne répondaient pas au
+   toucher sur cet écran. Il passe dessous, ne capte plus rien, et s'affiche enfin. */
+#player-bg{pointer-events:none}
+#player-bg.active{opacity:.55 !important}
+.player-volumio{position:relative;z-index:1}
+/* Barres fines (3 et 6 px) : une zone de toucher plus haute, invisible. */
+.pv-vol-track,.pv-prog-track{position:relative}
+.pv-vol-track::before{content:'';position:absolute;left:0;right:0;top:-14px;bottom:-14px}
+.pv-prog-track::before{content:'';position:absolute;left:0;right:0;top:-10px;bottom:-10px}
 </style>
 </head>
 <body>
@@ -564,7 +595,7 @@ html,body{font-family:Inter,-apple-system,'Segoe UI',sans-serif;background:var(-
             <div class="pv-controls">
               <button class="pv-btn" onclick="seekRel(-30)" title="-30s" aria-label="Reculer de 30 secondes">−30</button>
               <button class="pv-btn" id="btn-stop" onclick="stopBook()" title="Stop">⏹</button>
-              <button class="pv-btn" id="btn-read" onclick="startBook()">▶</button>
+              <button class="pv-btn" id="btn-read" onclick="toggleBook()">▶</button>
               <button class="pv-btn" onclick="seekRel(+30)" title="+30s" aria-label="Avancer de 30 secondes">+30</button>
             </div>
             <div class="pv-vol-row">
@@ -573,6 +604,11 @@ html,body{font-family:Inter,-apple-system,'Segoe UI',sans-serif;background:var(-
                 <div class="pv-vol-fill" id="pv-vol-fill"></div>
               </div>
               <span class="pv-vol-icon">🔊</span>
+            </div>
+
+            <div class="pv-extras">
+              <button class="speed-btn" id="btn-chapters" onclick="loadChapters()">📑 Chapitres</button>
+              <button class="speed-btn" onclick="toggleSleepPopup(event)">💤 Minuterie</button>
             </div>
 
             <!-- Chapitres -->
@@ -713,14 +749,15 @@ html,body{font-family:Inter,-apple-system,'Segoe UI',sans-serif;background:var(-
 
         <div class="settings-section">
           <h3>📚 Audiobookshelf</h3>
-          <div class="field"><label>URL du serveur</label><input id="cfg-abs-url" placeholder=localStorage.getItem('ab_abs_url') || ''></div>
+          <div class="field"><label>URL du serveur</label><input id="cfg-abs-url" placeholder="http://192.168.178.X:13378"></div>
           <div class="field"><label>Clé API</label><input id="cfg-abs-key" type="password" placeholder="eyJ…"></div>
           <button class="btn btn-primary" onclick="saveABS()">💾 Sauvegarder</button>
         </div>
 
         <div class="settings-section">
           <h3>🗄️ NAS</h3>
-          <div class="field"><label>Chemin UNC</label><input id="cfg-nas-path" placeholder="//192.168.178.X/share"></div>
+          <div id="nas-mounts" style="margin-bottom:10px"></div>
+          <div class="field"><label>Chemin du partage</label><input id="cfg-nas-path" placeholder="//192.168.178.200/music"></div>
           <div class="field"><label>Utilisateur</label><input id="cfg-nas-user" placeholder="jv"></div>
           <div class="field"><label>Mot de passe</label><input id="cfg-nas-pass" type="password"></div>
           <div style="display:flex;gap:8px">
@@ -735,7 +772,7 @@ html,body{font-family:Inter,-apple-system,'Segoe UI',sans-serif;background:var(-
               <option value="jack">Jack 3.5mm</option>
             </select>
           </div>
-          <div class="field"><label>Volume par défaut : <span id="vol-val">80</span>%</label>
+          <div class="field"><label>Volume : <span id="vol-val">80</span>%</label>
             <input type="range" min="0" max="100" value="80" style="width:100%" oninput="document.getElementById('vol-val').textContent=this.value;setVolume(this.value)">
           </div>
         </div>
@@ -761,7 +798,13 @@ html,body{font-family:Inter,-apple-system,'Segoe UI',sans-serif;background:var(-
 
         <div class="settings-section">
           <h3>🏠 Home Assistant</h3>
-          <p style="font-size:13px;color:var(--txt2);margin-bottom:12px">Config YAML pour votre <code style="background:var(--bg3);padding:2px 6px;border-radius:4px">configuration.yaml</code> HA :</p>
+          <p style="font-size:13px;color:var(--txt2);margin-bottom:10px;line-height:1.5">
+            Le plus simple : l'intégration <b>AudioBox</b>. Dans Home Assistant, ouvrez HACS (Marketplace),
+            ajoutez le dépôt personnalisé <code style="background:var(--bg3);padding:2px 6px;border-radius:4px">https://github.com/pi2018/AudioBox</code>
+            (type Intégration), installez-le, redémarrez Home Assistant, puis ajoutez l'intégration « AudioBox ».
+            La box devient un vrai lecteur : radios, volume, minuterie, annonces.
+          </p>
+          <p style="font-size:13px;color:var(--txt2);margin-bottom:12px">Ou, à l'ancienne, ce YAML pour <code style="background:var(--bg3);padding:2px 6px;border-radius:4px">configuration.yaml</code> :</p>
           <div id="ha-config" style="background:var(--bg0);border-radius:var(--rsm);padding:12px;font-size:11px;font-family:monospace;color:var(--acc2);max-height:200px;overflow-y:auto;white-space:pre;cursor:pointer" onclick="copyHAConfig()" title="Cliquer pour copier"></div>
           <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="copyHAConfig()">📋 Copier</button>
         </div>
@@ -826,6 +869,7 @@ html,body{font-family:Inter,-apple-system,'Segoe UI',sans-serif;background:var(-
             <button class="btn btn-ghost btn-sm" onclick="loadLogs(50)">50 lignes</button>
             <button class="btn btn-ghost btn-sm" onclick="loadLogs(100)">100 lignes</button>
             <button class="btn btn-ghost btn-sm" onclick="loadLogs(200)">200 lignes</button>
+            <button class="btn btn-ghost btn-sm" onclick="loadLogs(300,'maj')">Dernière mise à jour</button>
           </div>
           <div id="sys-logs" style="background:var(--bg0);border-radius:var(--rsm);padding:12px;font-size:11px;font-family:monospace;color:var(--txt2);max-height:300px;overflow-y:auto;white-space:pre-wrap;word-break:break-all">Cliquez sur un bouton pour charger les logs</div>
         </div>
@@ -938,13 +982,14 @@ html,body{font-family:Inter,-apple-system,'Segoe UI',sans-serif;background:var(-
           <div id="pb-time">0:00 / 0:00</div>
         </div>
         <div class="pb-controls">
-          <button class="pb-btn" onclick="seekRel(-30)" title="-30s">⏮</button>
+          <button class="pb-btn" onclick="chapitreRel(-1)" title="Chapitre précédent">⏮</button>
           <button class="pb-btn" onclick="seekRel(-30)" title="-30s">↺</button>
           <button class="pb-btn" id="btn-playpause" onclick="togglePlay()">▶</button>
           <button class="pb-btn" onclick="seekRel(+30)" title="+30s">↻</button>
-          <button class="pb-btn" onclick="seekRel(+30)" title="+30s">⏭</button>
+          <button class="pb-btn" onclick="chapitreRel(+1)" title="Chapitre suivant">⏭</button>
         </div>
         <div class="pb-right">
+          <button id="pb-sleep-label" onclick="toggleSleepPopup(event)" title="Minuterie de sommeil">💤<span id="sleep-countdown"></span></button>
           <button id="pb-speed-label" onclick="toggleSpeedPopup(event)">1x</button>
           <div class="pb-vol">
             <button class="sp-fine-btn" onclick="changeVolume(-5)" style="width:26px;height:26px;font-size:16px;background:var(--bg3);border:none;border-radius:50%;color:var(--txt);cursor:pointer;display:flex;align-items:center;justify-content:center">−</button>
@@ -993,12 +1038,13 @@ html,body{font-family:Inter,-apple-system,'Segoe UI',sans-serif;background:var(-
 
 <!-- Popup vitesse style ABS -->
 <div id="speed-popup">
+  <div class="sp-titre">Vitesse de lecture</div>
   <button class="sp-close" onclick="closeSpeedPopup()">✕</button>
   <div class="sp-presets">
     <button class="sp-preset" onclick="setSpeedPopup(0.5)">0.5x</button>
     <button class="sp-preset" onclick="setSpeedPopup(0.75)">0.75x</button>
     <button class="sp-preset active" id="sp-p1" onclick="setSpeedPopup(1)">1x</button>
-    <button class="sp-preset" onclick="setSpeedPopup(1.25)">1.2x</button>
+    <button class="sp-preset" onclick="setSpeedPopup(1.25)">1.25x</button>
     <button class="sp-preset" onclick="setSpeedPopup(1.5)">1.5x</button>
     <button class="sp-preset" onclick="setSpeedPopup(2)">2x</button>
   </div>
@@ -1007,6 +1053,21 @@ html,body{font-family:Inter,-apple-system,'Segoe UI',sans-serif;background:var(-
     <div id="sp-current">1.0x</div>
     <button class="sp-fine-btn" onclick="adjustSpeed(+0.05)">+</button>
   </div>
+</div>
+
+<!-- Minuterie de sommeil : c'est la box qui la tient (le son baisse puis s'arrête) -->
+<div id="sleep-popup">
+  <div class="sp-titre">💤 Minuterie de sommeil</div>
+  <button class="sp-close" onclick="closeSleepPopup()">✕</button>
+  <div class="sp-presets">
+    <button class="sp-preset" onclick="setSleepTimer(15)">15 min</button>
+    <button class="sp-preset" onclick="setSleepTimer(30)">30 min</button>
+    <button class="sp-preset" onclick="setSleepTimer(45)">45 min</button>
+    <button class="sp-preset" onclick="setSleepTimer(60)">1 h</button>
+    <button class="sp-preset" onclick="setSleepTimer(90)">1 h 30</button>
+    <button class="sp-preset" onclick="setSleepTimer(120)">2 h</button>
+  </div>
+  <button class="btn btn-ghost btn-sm" id="sleep-cancel" onclick="cancelSleepTimer()" style="display:none">✕ Arrêter la minuterie</button>
 </div>
 
 <div id="toast"></div>
@@ -1124,16 +1185,21 @@ async function loadRecent() {
     }
     recentList.innerHTML = '';
     progressList.forEach(prog => {
-      const itemId = prog.libraryItemId;
+      const itemId = String(prog.libraryItemId || '');
+      if (!itemId) return;
       const pct = Math.round(prog.progress * 100);
       const remain = prog.duration > 0 ? Math.max(0, prog.duration - prog.currentTime) : 0;
       const card = document.createElement('div');
       card.className = 'abs-prog-card';
       card.style.cursor = 'pointer';
-      card.onclick = () => { const f=(window._absItems||[]).find(i=>i.id===itemId); if(f) openBook(f); };
-      card.innerHTML = '<div class="abs-prog-cover"><img src="/api/abs/cover/'+itemId+'" onerror="this.parentElement.textContent=String.fromCharCode(128218)" loading="lazy"><div class="abs-prog-pct">'+pct+'%</div></div><div class="abs-prog-info"><div class="abs-prog-title" id="rt-'+itemId+'">...</div><div class="abs-prog-author">'+fmtTime(remain)+' restant</div><div class="abs-prog-bar"><div class="abs-prog-bar-fill" style="width:'+pct+'%"></div></div></div>';
+      // Avant, la carte ne s'ouvrait que si la page « Livres » avait déjà été visitée.
+      card.onclick = () => openBookById(itemId, prog);
+      const cover = '/api/abs/cover/' + encodeURIComponent(itemId);
+      card.innerHTML = `<div class="abs-prog-cover"><img src="${esc(cover)}" onerror="this.parentElement.textContent=String.fromCharCode(128218)" loading="lazy"><div class="abs-prog-pct">${pct}%</div></div><div class="abs-prog-info"><div class="abs-prog-title">…</div><div class="abs-prog-author">${fmtTime(remain)} restant</div><div class="abs-prog-bar"><div class="abs-prog-bar-fill" style="width:${pct}%"></div></div></div>`;
       recentList.appendChild(card);
-      api('GET','/abs/stream/'+itemId).then(s=>{const e=document.getElementById('rt-'+itemId);if(e)e.textContent=s.title||itemId;}).catch(()=>{});
+      livreParId(itemId).then(it => {
+        card.querySelector('.abs-prog-title').textContent = it?.media?.metadata?.title || '—';
+      }).catch(() => {});
     });
   } catch(e) {
     recentList.innerHTML = '<div style="color:var(--txt3);font-size:13px">Erreur: '+esc(e.message)+'</div>';
@@ -1142,6 +1208,24 @@ async function loadRecent() {
 
 function goHome() {
   showScreen('home');
+}
+
+// Un livre par son numéro ABS : déjà chargé par la page « Livres », sinon demandé à la box.
+const _livresParId = {};
+async function livreParId(itemId) {
+  const connu = (window._absItems || []).find(i => i.id === itemId) || _livresParId[itemId];
+  if (connu) return connu;
+  const item = await api('GET', `/abs/items/${encodeURIComponent(itemId)}`);
+  _livresParId[itemId] = item;
+  return item;
+}
+
+async function openBookById(itemId, prog) {
+  try {
+    const item = await livreParId(itemId);
+    if (prog && !item.userMediaProgress) item.userMediaProgress = prog;
+    openBook(item);
+  } catch(e) { toast('Erreur: ' + e.message); }
 }
 
 // ══════════════════════════════════════════════════════
@@ -1286,11 +1370,10 @@ async function stopBook() {
     _bookLoading = false;  // Réinitialiser le verrou
     await api('POST', '/player/stop');
     isPlaying = false;
-    document.getElementById('btn-playpause').textContent = '▶';
+    majBoutons(false);
     const btnRead = document.getElementById('btn-read');
-    if (btnRead) { btnRead.disabled = false; btnRead.textContent = '▶'; }
-    document.getElementById('pb-title').textContent = 'Aucune lecture';
-    document.getElementById('pb-author').textContent = '';
+    if (btnRead) btnRead.disabled = false;
+    viderPB();
     toast('⏹ Arrêté');
   } catch(e) { 
     _bookLoading = false;
@@ -1339,13 +1422,15 @@ async function startBook() {
       item_id:    itemId,
       duration:   Number(stream.duration || currentItem.media?.duration || 0),
       title:      String(stream.title || currentItem.media?.metadata?.title || ''),
-      author:     String(currentItem.media?.metadata?.authorName || ''),
+      author:     String(auteurDe(currentItem)),
       start_time: Number(startTime),
       output:     getOutput()
     });
     if (btn) { btn.disabled = false; btn.textContent = '⏸'; }
     isPlaying = true;
     _bookLoading = false;
+    updatePB(String(stream.title || currentItem.media?.metadata?.title || ''), auteurDe(currentItem),
+             `/api/abs/cover/${encodeURIComponent(currentItem.id)}`);
     toast('▶ Lecture lancée');
   } catch(e) {
     if (btn) { btn.disabled = false; btn.textContent = '▶'; }
@@ -1354,12 +1439,38 @@ async function startBook() {
   }
 }
 
+function auteurDe(item) {
+  const m = item?.media?.metadata || {};
+  return m.authorName || (m.authors || []).map(a => a.name).filter(Boolean).join(', ') || '';
+}
+
+// Bouton lecture de l'écran du livre : pause si CE livre joue, sinon lecture.
+// Avant, il relançait le livre à chaque appui, même quand il affichait « pause ».
+async function toggleBook() {
+  if (!currentItem) return;
+  if (pState.playing && pState.item_id === currentItem.id) {
+    try {
+      await api('POST', '/player/pause');
+      majBoutons(false);
+    } catch(e) { toast('Erreur: ' + e.message); }
+  } else {
+    await startBook();
+  }
+}
+
 async function openBook(item) {
   currentItem = item;
   showScreen('player');
+  // Les chapitres affichés étaient ceux du livre précédent.
+  _chapters = [];
+  const wrapCh = document.getElementById('chapters-wrap');
+  const btnCh = document.getElementById('btn-chapters');
+  if (wrapCh) wrapCh.style.display = 'none';
+  if (btnCh) btnCh.style.display = '';
+  majBoutons(!!pState.playing);
 
   const title  = item.media?.metadata?.title || '—';
-  const author = item.media?.metadata?.authorName || '';
+  const author = auteurDe(item);
   const series = item.media?.metadata?.series || '';
   const desc   = item.media?.metadata?.description || '';
   const dur    = item.media?.duration || 0;
@@ -1387,8 +1498,8 @@ async function openBook(item) {
 
 // badges supprimés
 
-  // Mettre à jour la player bar
-  updatePB(title, author, `/api/abs/cover/${encodeURIComponent(item.id)}`);
+  // La barre du bas montre ce qui JOUE (mise à jour par la box) : ouvrir un livre ne
+  // la change plus. Avant, elle affichait ce livre et « pause » alors que rien ne jouait.
 }
 
 // Proxy cover ABS
@@ -1499,7 +1610,9 @@ async function playYT(url, title) {
   toast('Résolution du stream…');
   try {
     const stream = await api('POST', '/youtube/resolve', {url, audio_only:true});
-    await api('POST', '/player/play', {source:'youtube', uri:stream.url, title, output:getOutput()});
+    // « page » : la box peut redemander l'adresse de lecture (elle expire) pour reprendre.
+    await api('POST', '/player/play', {source:'youtube', uri:stream.url, page:url, title,
+                                       cover_url: stream.thumbnail || '', output:getOutput()});
     updatePB(title, 'YouTube', '▶️');
     toast(`▶ ${title}`);
   } catch(e) { toast('Erreur: ' + e.message); }
@@ -1530,13 +1643,15 @@ async function importOPML() {
   if (!input) { toast('Entrez une URL OPML'); return; }
   try {
     let xml = input;
-    if (input.startsWith('http')) {
-      const r = await fetch(input);
-      xml = await r.text();
+    if (/^https?:\/\//i.test(input)) {
+      // C'est la box qui télécharge : le navigateur, lui, était bloqué par le site (CORS).
+      xml = (await api('GET', `/podcast/rss?url=${encodeURIComponent(input)}`)).contents;
     }
     const stations = parseOPML(xml);
     if (!stations.length) { toast('Aucune station trouvée dans le fichier'); return; }
-    const curr = await api('GET', '/settings/radios').catch(() => []);
+    // Sans « .catch(() => []) » : si la lecture échouait, l'enregistrement effaçait
+    // toutes les radios déjà gardées.
+    const curr = await api('GET', '/settings/radios');
     const merged = [...curr];
     stations.forEach(s => {
       if (!merged.find(m => m.url === s.url)) merged.push(s);
@@ -1551,17 +1666,19 @@ async function importOPML() {
 async function importOPMLFile(input) {
   const file = input.files[0];
   if (!file) return;
-  const xml = await file.text();
-  const stations = parseOPML(xml);
-  if (!stations.length) { toast('Aucune station trouvée'); return; }
-  const curr = await api('GET', '/settings/radios').catch(() => []);
-  const merged = [...curr];
-  stations.forEach(s => {
-    if (!merged.find(m => m.url === s.url)) merged.push(s);
-  });
-  await api('POST', '/settings/radios', merged);
-  loadRadios();
-  toast(`✓ ${stations.length} stations importées`);
+  try {
+    const xml = await file.text();
+    const stations = parseOPML(xml);
+    if (!stations.length) { toast('Aucune station trouvée'); return; }
+    const curr = await api('GET', '/settings/radios');
+    const merged = [...curr];
+    stations.forEach(s => {
+      if (!merged.find(m => m.url === s.url)) merged.push(s);
+    });
+    await api('POST', '/settings/radios', merged);
+    loadRadios();
+    toast(`✓ ${stations.length} stations importées`);
+  } catch(e) { toast('Erreur: ' + e.message); }
 }
 
 // ══════════════════════════════════════════════════════
@@ -1721,7 +1838,7 @@ async function tunerSearch() {
           </div>
         </div>
         <div class="tuner-actions">
-          <button class="btn btn-ghost btn-sm" onclick="tunerPlay(${jsArg(streamUrl)},${jsArg(s.name)})">▶</button>
+          <button class="btn btn-ghost btn-sm" onclick="tunerPlay(${jsArg(streamUrl)},${jsArg(s.name)},${jsArg(s.favicon||'')})">▶</button>
           <button class="btn btn-primary btn-sm" onclick="tunerSave(${jsArg(streamUrl)},${jsArg(s.name)},${jsArg(s.favicon||'')})">⭐</button>
         </div>`;
       results.appendChild(div);
@@ -1731,17 +1848,21 @@ async function tunerSearch() {
   }
 }
 
-async function tunerPlay(url, name) {
-  await api('POST', '/player/play', {source:'radio', uri:url, title:name, output:getOutput()});
-  updatePB(name, 'Radio', '📻');
-  toast(`▶ ${name}`);
+async function tunerPlay(url, name, favicon) {
+  try {
+    await api('POST', '/player/play', {source:'radio', uri:url, title:name, cover_url: favicon || '', output:getOutput()});
+    updatePB(name, 'Radio', favicon || '📻');
+    toast(`▶ ${name}`);
+  } catch(e) { toast('Erreur: ' + e.message); }
 }
 
 async function tunerSave(url, name, favicon) {
-  const curr = await api('GET', '/settings/radios').catch(() => []);
-  if (curr.find(s => s.url === url)) { toast('Déjà dans vos stations'); return; }
-  await api('POST', '/settings/radios', [...curr, {name, url, favicon: favicon || ''}]);
-  toast(`⭐ ${name} sauvegardé`);
+  try {
+    const curr = await api('GET', '/settings/radios');
+    if (curr.find(s => s.url === url)) { toast('Déjà dans vos stations'); return; }
+    await api('POST', '/settings/radios', [...curr, {name, url, favicon: favicon || ''}]);
+    toast(`⭐ ${name} sauvegardé`);
+  } catch(e) { toast('Erreur: ' + e.message); }
 }
 
 // ══════════════════════════════════════════════════════
@@ -1749,7 +1870,7 @@ async function tunerSave(url, name, favicon) {
 // ══════════════════════════════════════════════════════
 async function loadPodcasts() {
   const grid = document.getElementById('podcasts-grid');
-  const podcasts = JSON.parse(localStorage.getItem('audiobox_podcasts') || '[]');
+  const podcasts = lirePodcasts();
   if (!podcasts.length) {
     grid.innerHTML = '<div class="empty" style="grid-column:1/-1">🎙️<span>Aucun podcast — ajoutez un flux RSS</span></div>';
     return;
@@ -1767,15 +1888,25 @@ async function loadPodcasts() {
   });
 }
 
+const EPISODES_GARDES = 200;   // les plus récents (le stockage de l'écran est limité)
+
+function lirePodcasts() {
+  try { return JSON.parse(localStorage.getItem('audiobox_podcasts') || '[]'); } catch(e) { return []; }
+}
+function ecrirePodcasts(podcasts) {
+  try { localStorage.setItem('audiobox_podcasts', JSON.stringify(podcasts)); } catch(e) {}
+}
+
 async function addPodcast() {
   const url = document.getElementById('podcast-rss').value.trim();
   if (!url) { toast('Entrez une URL RSS'); return; }
   toast('Chargement du flux…');
   try {
     const feed = await fetchRSS(url);
-    const podcasts = JSON.parse(localStorage.getItem('audiobox_podcasts') || '[]');
-    podcasts.push({url, title: feed.title, episodes: feed.episodes});
-    localStorage.setItem('audiobox_podcasts', JSON.stringify(podcasts));
+    const podcasts = lirePodcasts();
+    if (podcasts.find(p => p.url === url)) { toast('Ce podcast est déjà dans la liste'); return; }
+    podcasts.push({url, title: feed.title, episodes: feed.episodes.slice(0, EPISODES_GARDES)});
+    ecrirePodcasts(podcasts);
     document.getElementById('podcast-rss').value = '';
     loadPodcasts();
     toast(`✓ ${feed.title} ajouté`);
@@ -1804,13 +1935,37 @@ async function fetchRSS(url) {
   return {title, episodes};
 }
 
-function showPodcastEpisodes(podcast, idx) {
+let _podcastAffiche = '';
+
+async function showPodcastEpisodes(podcast, idx) {
   document.getElementById('podcast-list-view').style.display = 'none';
   document.getElementById('podcast-episodes-view').style.display = 'block';
   document.getElementById('podcast-ep-title').textContent = podcast.title || podcast.url;
+  _podcastAffiche = podcast.url;
+  afficherEpisodes(podcast.episodes || []);
+  // Les nouveaux épisodes : avant, la liste restait celle du jour de l'ajout.
+  try {
+    const feed = await fetchRSS(podcast.url);
+    const podcasts = lirePodcasts();
+    const p = podcasts.find(x => x.url === podcast.url);
+    if (p) {
+      p.episodes = feed.episodes.slice(0, EPISODES_GARDES);
+      if (feed.title) p.title = feed.title;
+      ecrirePodcasts(podcasts);
+    }
+    if (_podcastAffiche === podcast.url) afficherEpisodes(feed.episodes.slice(0, EPISODES_GARDES));
+  } catch(e) {}
+}
+
+function dateCourte(texte) {
+  const d = texte ? new Date(texte) : null;
+  return d && !isNaN(d) ? d.toLocaleDateString('fr-FR') : '';
+}
+
+function afficherEpisodes(episodes) {
   const list = document.getElementById('episodes-list');
   list.innerHTML = '';
-  (podcast.episodes || []).forEach(ep => {
+  episodes.forEach(ep => {
     const div = document.createElement('div');
     div.className = 'yt-card';
     div.onclick = () => playPodcastEpisode(ep);
@@ -1818,21 +1973,25 @@ function showPodcastEpisodes(podcast, idx) {
       <div class="yt-thumb">🎙️</div>
       <div class="yt-info">
         <div class="yt-title">${esc(ep.title)}</div>
-        <div class="yt-dur">${ep.pubDate ? new Date(ep.pubDate).toLocaleDateString('fr-FR') : ''} ${esc(ep.duration || '')}</div>
+        <div class="yt-dur">${dateCourte(ep.pubDate)} ${esc(ep.duration || '')}</div>
       </div>`;
     list.appendChild(div);
   });
 }
 
 function showPodcastList() {
+  _podcastAffiche = '';
   document.getElementById('podcast-list-view').style.display = 'block';
   document.getElementById('podcast-episodes-view').style.display = 'none';
 }
 
 async function playPodcastEpisode(ep) {
   try {
+    // « podcast » (avant : « radio ») : la vitesse choisie s'applique, et une annonce
+    // de Home Assistant reprend l'épisode au bon endroit.
     await api('POST', '/player/play', {
-      source: 'radio', uri: ep.url, title: ep.title, output: getOutput()
+      source: 'podcast', uri: ep.url, title: ep.title,
+      author: document.getElementById('podcast-ep-title').textContent || 'Podcast', output: getOutput()
     });
     updatePB(ep.title, 'Podcast', '🎙️');
     toast(`▶ ${ep.title}`);
@@ -1840,9 +1999,9 @@ async function playPodcastEpisode(ep) {
 }
 
 function removePodcast(idx) {
-  const podcasts = JSON.parse(localStorage.getItem('audiobox_podcasts') || '[]');
+  const podcasts = lirePodcasts();
   podcasts.splice(idx, 1);
-  localStorage.setItem('audiobox_podcasts', JSON.stringify(podcasts));
+  ecrirePodcasts(podcasts);
   loadPodcasts();
   toast('Podcast supprimé');
 }
@@ -1904,11 +2063,10 @@ async function loadRadios() {
       const isFav = favorites.includes(s.url);
       const card = document.createElement('div');
       card.className = 'radio-card' + (currentRadio === s.url ? ' playing' : '') + (isFav ? ' favorite' : '');
-      card.onclick = () => playRadio(s.url, s.name);
-      card.id = `radio-card-${i}`;
-
       // Logo : depuis la station, depuis le cache, ou emoji
       const favicon = s.favicon || logoCache[s.name] || '';
+      card.onclick = () => playRadio(s.url, s.name, s.favicon || logoCache[s.name] || '');
+      card.id = `radio-card-${i}`;
       const logoHtml = favicon
         ? `<img src="${esc(favicon)}" onerror="this.outerHTML='📻'" style="width:52px;height:52px;border-radius:8px;object-fit:cover">`
         : `<span id="radio-logo-${i}">📻</span>`;
@@ -1917,7 +2075,7 @@ async function loadRadios() {
         <button class="radio-fav" onclick="event.stopPropagation();toggleFavoriteRadio(${jsArg(s.url)})" title="${isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}">${isFav ? '⭐' : '☆'}</button>
         <div class="radio-icon">${logoHtml}</div>
         <div class="radio-name">${esc(s.name)}</div>
-        <button class="radio-del" onclick="event.stopPropagation();removeRadio(${i})">✕</button>`;
+        <button class="radio-del" onclick="event.stopPropagation();removeRadio(${jsArg(s.url)},${jsArg(s.name)})">✕</button>`;
       grid.appendChild(card);
 
       // Charger le logo en arrière-plan si manquant
@@ -1937,11 +2095,11 @@ async function loadRadios() {
   }
 }
 
-async function playRadio(url, name) {
+async function playRadio(url, name, favicon) {
   try {
-    await api('POST', '/player/play', {source:'radio', uri:url, title:name, output:getOutput()});
+    await api('POST', '/player/play', {source:'radio', uri:url, title:name, cover_url: favicon || '', output:getOutput()});
     currentRadio = url;
-    updatePB(name, 'Radio en direct', '📻');
+    updatePB(name, 'Radio en direct', favicon || '📻');
     toast(`▶ ${name}`);
     loadRadios();
   } catch(e) { toast('Erreur: ' + e.message); }
@@ -1952,7 +2110,7 @@ async function addRadio() {
   const url  = document.getElementById('r-url').value.trim();
   if (!name || !url) { toast('Remplissez le nom et l\'URL'); return; }
   try {
-    const curr = await api('GET', '/settings/radios').catch(() => []);
+    const curr = await api('GET', '/settings/radios');
     await api('POST', '/settings/radios', [...curr, {name, url}]);
     document.getElementById('r-name').value = '';
     document.getElementById('r-url').value  = '';
@@ -1975,46 +2133,122 @@ function toggleFavoriteRadio(url) {
   loadRadios();
 }
 
-async function removeRadio(idx) {
-  const curr = await api('GET', '/settings/radios').catch(() => []);
-  curr.splice(idx, 1);
-  await api('POST', '/settings/radios', curr);
-  loadRadios();
+// Par son adresse : avant, c'était par sa place dans la liste affichée, où les
+// favorites passent en premier… et ce n'était pas la bonne radio qui disparaissait.
+async function removeRadio(url, nom) {
+  if (!confirm(`Supprimer « ${nom || 'cette radio'} » ?`)) return;
+  try {
+    const curr = await api('GET', '/settings/radios');
+    await api('POST', '/settings/radios', curr.filter(s => s.url !== url));
+    loadRadios();
+    toast('Radio supprimée');
+  } catch(e) { toast('Erreur: ' + e.message); }
 }
 
 // ══════════════════════════════════════════════════════
 // PLAYER
 // ══════════════════════════════════════════════════════
+let _pbTitre = null;   // ce que montre la barre du bas (pour ne la refaire que si ça change)
+
 function updatePB(title, author, coverSrc) {
+  _pbTitre = title;
   document.getElementById('pb-title').textContent  = title;
   document.getElementById('pb-author').textContent = author;
-  document.getElementById('btn-playpause').textContent = '⏸';
+  majBoutons(true);
   isPlaying = true;
 
   const cov = document.getElementById('pb-cover');
-  if (typeof coverSrc === 'string' && coverSrc.startsWith('/')) {
+  if (typeof coverSrc === 'string' && /^(\/|https?:\/\/)/.test(coverSrc)) {
     cov.innerHTML = `<img src="${esc(coverSrc)}" onerror="this.parentElement.textContent='🎵'" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
   } else {
     cov.textContent = coverSrc || '🎵';
   }
 }
 
+function viderPB() {
+  _pbTitre = '';
+  document.getElementById('pb-title').textContent = 'Aucune lecture';
+  document.getElementById('pb-author').textContent = '';
+  document.getElementById('pb-cover').textContent = '🎵';
+}
+
+const SOURCES = {abs: 'Livre audio', radio: 'Radio en direct', podcast: 'Podcast', youtube: 'YouTube',
+                 nas: 'NAS', url: 'Home Assistant', annonce: 'Annonce'};
+const ICONES  = {abs: '📚', radio: '📻', podcast: '🎙️', youtube: '▶️', nas: '🎵', url: '🏠', annonce: '📢'};
+
+// La barre du bas suit ce que la box joue VRAIMENT, même lancé ailleurs (téléphone,
+// Home Assistant, fin de minuterie). Avant, elle ne savait que ce que l'écran avait lancé.
+function suivreLaBox(st) {
+  isPlaying = !!st.playing;
+  majBoutons(isPlaying);
+  if (st.stopped) {
+    if (_pbTitre) viderPB();
+    return;
+  }
+  if (st.title && st.title !== _pbTitre) {
+    const image = st.item_id ? `/api/abs/cover/${encodeURIComponent(st.item_id)}` : (st.cover_url || ICONES[st.source] || '🎵');
+    updatePB(st.title, st.author || SOURCES[st.source] || '', image);
+    majBoutons(isPlaying);
+  }
+}
+
+function majBoutons(joue) {
+  const b = document.getElementById('btn-playpause');
+  if (b) b.textContent = joue ? '⏸' : '▶';
+  const r = document.getElementById('btn-read');
+  if (r && !_bookLoading) {
+    const ceLivre = currentItem && pState.item_id === currentItem.id;
+    r.textContent = (joue && ceLivre) ? '⏸' : '▶';
+  }
+}
+
 async function togglePlay() {
   try {
-    if (isPlaying) {
-      // En lecture → pause
+    if (pState.playing) {
       await api('POST', '/player/pause');
-      isPlaying = false;
-      document.getElementById('btn-playpause').textContent = '▶';
-      const btn = document.getElementById('btn-read');
-      if (btn) btn.textContent = '▶';
-    } else if (currentItem) {
-      // En pause ou arrêté → toujours relancer depuis ABS
+      majBoutons(false);
+    } else if (pState.paused && pState.source !== 'abs') {
+      // Radio, podcast, YouTube, NAS en pause : on reprend là où on était.
+      // (Avant, impossible : le bouton disait « Sélectionnez un livre ou une radio ».)
+      await api('POST', '/player/resume');
+      majBoutons(true);
+    } else if (currentItem && (!pState.item_id || pState.item_id === currentItem.id)) {
+      // Livre : toujours relancé depuis la position enregistrée dans Audiobookshelf.
       await startBook();
     } else {
-      toast('Sélectionnez un livre ou une radio');
+      // Rien de chargé ici : la box reprend la dernière écoute.
+      await api('POST', '/player/resume');
     }
   } catch(e) { toast('Erreur: ' + e.message); }
+}
+
+// ⏮ ⏭ : chapitre précédent / suivant d'un livre (avant : ±30 s, comme ↺ ↻).
+const _chapitresParLivre = {};
+async function chapitresDe(itemId) {
+  if (!itemId) return [];
+  if (!_chapitresParLivre[itemId]) {
+    try { _chapitresParLivre[itemId] = await api('GET', `/abs/chapters/${encodeURIComponent(itemId)}`) || []; }
+    catch(e) { return []; }
+  }
+  return _chapitresParLivre[itemId];
+}
+
+async function chapitreRel(sens) {
+  const chs = await chapitresDe(pState.item_id);
+  if (!chs.length) { seekRel(sens * 30); return; }
+  const pos = pState.position || 0;
+  let i = chs.findIndex(c => pos >= c.start && pos < c.end);
+  if (i < 0) i = pos < chs[0].start ? 0 : chs.length - 1;
+  let cible;
+  if (sens < 0) {
+    // Au début d'un chapitre, on recule au précédent ; sinon au début de celui-ci.
+    cible = (pos - chs[i].start > 4 || i === 0) ? i : i - 1;
+  } else {
+    if (i + 1 >= chs.length) { toast('Dernier chapitre'); return; }
+    cible = i + 1;
+  }
+  await api('POST', '/player/seek', {position: chs[cible].start}).catch(() => {});
+  toast(`📑 ${chs[cible].title || 'Chapitre ' + (cible + 1)}`);
 }
 
 async function seekRel(delta) {
@@ -2041,10 +2275,21 @@ function seekToClickBar(e, isVol) {
   }
 }
 
-function seekToClickBar(e) { seekToClick(e); }
+// (Une deuxième fonction seekToClickBar, plus bas avant la 1.6, remplaçait celle-ci :
+// toucher la barre de VOLUME de l'écran lecture faisait sauter le livre à cet endroit.)
 
+let _volumeTouche = 0;   // moment du dernier réglage à la main (pour ne pas le contrarier)
 async function setVolume(v) {
+  _volumeTouche = Date.now();
+  afficherVolume(v);
   await api('POST', `/player/volume/${v}`).catch(() => {});
+}
+
+function afficherVolume(v) {
+  const slider = document.getElementById('vol-slider');
+  if (slider && document.activeElement !== slider) slider.value = v;
+  const fill = document.getElementById('pv-vol-fill');
+  if (fill) fill.style.width = Math.max(0, Math.min(100, v)) + '%';
 }
 
 function getOutput() {
@@ -2064,25 +2309,27 @@ function connectWS() {
     if (msg.event) return;
     pState = msg;
     syncSleepFromStatus(pState);
-    document.getElementById('pd-time-cur').textContent = fmtTime(pState.position);
-    document.getElementById('pd-time-dur').textContent = fmtTime(pState.duration);
     const pct = pState.duration > 0 ? (pState.position / pState.duration * 100).toFixed(1) : 0;
     const pbFill = document.getElementById('pb-prog-fill');
     if (pbFill) pbFill.style.width = pct + '%';
     const pbTime = document.getElementById('pb-time');
-    if (pbTime) pbTime.textContent = fmtTime(pState.position) + ' / ' + fmtTime(pState.duration);
+    if (pbTime) pbTime.textContent = pState.stopped ? '' : fmtTime(pState.position) + ' / ' + fmtTime(pState.duration);
 
-    // Sync écran lecture
-    if (document.getElementById('screen-player').classList.contains('active')) {
+    // Écran du livre : seulement si c'est CE livre qui joue (avant, il affichait aussi
+    // l'avance d'une radio ou d'un autre livre).
+    if (currentItem && pState.item_id === currentItem.id) {
       document.getElementById('pd-time-cur').textContent = fmtTime(pState.position);
-      const _p=document.getElementById('pd-prog');if(_p)_p.style.width=pct+'%';
+      document.getElementById('pd-time-dur').textContent = fmtTime(pState.duration);
+      const _p = document.getElementById('pd-prog'); if (_p) _p.style.width = pct + '%';
       document.getElementById('pd-pct').textContent = Math.round(pct) + '%';
     }
 
-    if (!pState.playing && !pState.paused && isPlaying) {
-      isPlaying = false;
-      document.getElementById('btn-playpause').textContent = '▶';
+    if (typeof pState.volume === 'number' && Date.now() - _volumeTouche > 3000) afficherVolume(pState.volume);
+    if (typeof pState.vitesse === 'number' && Math.abs(pState.vitesse - _currentSpeed) > 0.001) {
+      _currentSpeed = Math.round(pState.vitesse * 100) / 100;
+      updateSpeedUI();
     }
+    suivreLaBox(pState);
   };
   ws.onclose = () => setTimeout(connectWS, 3000);
 }
@@ -2179,7 +2426,7 @@ async function addWebhook() {
   if (document.getElementById('wh-ev-stop').checked)     events.push('stop');
   if (document.getElementById('wh-ev-finished').checked) events.push('finished');
   try {
-    const curr = await api('GET', '/settings/webhooks').catch(() => []);
+    const curr = await api('GET', '/settings/webhooks');
     curr.push({url, name, events});
     await api('POST', '/settings/webhooks', curr.map(w => ({url:w.url, name:w.name||'', events:w.events||[]})));
     document.getElementById('wh-url').value  = '';
@@ -2190,10 +2437,12 @@ async function addWebhook() {
 }
 
 async function removeWebhook(idx) {
-  const curr = await api('GET', '/settings/webhooks').catch(() => []);
-  curr.splice(idx, 1);
-  await api('POST', '/settings/webhooks', curr.map(w => ({url:w.url, name:w.name||'', events:w.events||[]})));
-  loadWebhooks();
+  try {
+    const curr = await api('GET', '/settings/webhooks');
+    curr.splice(idx, 1);
+    await api('POST', '/settings/webhooks', curr.map(w => ({url:w.url, name:w.name||'', events:w.events||[]})));
+    loadWebhooks();
+  } catch(e) { toast('Erreur: ' + e.message); }
 }
 
 
@@ -2244,17 +2493,42 @@ async function sysRestartBackend() {
 }
 
 async function updateAudioBox() {
-  if (!confirm('Télécharger la dernière version et réinstaller AudioBox ? La musique s\'arrêtera quelques minutes.')) return;
+  if (!confirm('Télécharger la dernière version et réinstaller AudioBox ? La musique s\'arrêtera quelques minutes, puis la box redémarre toute seule.')) return;
   try {
     const r = await api('POST', '/system/update-audiobox');
     toast(r.message || 'Mise à jour lancée');
+    setTimeout(loadVersion, 1500);
   } catch(e) { toast('Erreur: ' + e.message); }
 }
 
+// La version qui tourne, et le résultat de la dernière mise à jour (en cours, réussie,
+// ou ce qui a échoué). Avant, seul le numéro écrit sur la carte était affiché : il
+// pouvait être neuf alors que l'ancien programme tournait encore.
 async function loadVersion() {
   try {
     const v = await api('GET', '/system/version');
-    document.getElementById('ab-version').textContent = `AudioBox ${v.version || '?'}`;
+    const tourne = v.en_cours || v.version || '?';
+    let txt = `AudioBox ${tourne}`;
+    if (v.version && v.en_cours && v.version !== v.en_cours) {
+      txt += ` — la ${v.version} est installée : redémarrez la box pour l'utiliser`;
+    }
+    const m = String(v.maj || '');
+    if (m === 'en_cours') txt += ' — mise à jour en cours…';
+    else if (m.startsWith('echec')) txt += ' — dernière mise à jour : échec (' + m.replace(/^echec\s*:?\s*/, '') + ')';
+    else if (m.startsWith('ok')) txt += ' — dernière mise à jour réussie';
+    document.getElementById('ab-version').textContent = txt;
+  } catch(e) {}
+}
+
+// Après une mise à jour, l'écran se recharge tout seul sur la nouvelle version.
+let _versionPage = null;
+async function surveillerVersion() {
+  try {
+    const v = await fetch('/api/system/version', {cache: 'no-store'}).then(r => r.json());
+    const ver = v.en_cours || v.version;
+    if (!ver) return;
+    if (_versionPage === null) _versionPage = ver;
+    else if (ver !== _versionPage) location.reload();
   } catch(e) {}
 }
 
@@ -2279,6 +2553,11 @@ async function backupConfig() {
     const r = await fetch('/api/system/backup', {
       headers: token ? {'Authorization': `Bearer ${token}`} : {}
     });
+    // Avant, une erreur (code refusé) était enregistrée comme si c'était la sauvegarde.
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      throw new Error(e.detail || `HTTP ${r.status}`);
+    }
     const blob = await r.blob();
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -2299,12 +2578,12 @@ async function restoreConfig(input) {
   } catch(e) { toast('Erreur: ' + e.message); }
 }
 
-async function loadLogs(lines) {
+async function loadLogs(lines, source) {
   const el = document.getElementById('sys-logs');
   el.textContent = 'Chargement…';
   try {
-    const r = await fetch(`/api/system/logs?lines=${lines}`);
-    const d = await r.json();
+    // Avec le code (avant : refusé depuis un téléphone, sans message).
+    const d = await api('GET', `/system/logs?lines=${lines}&source=${source || 'serveur'}`);
     el.textContent = d.logs || 'Aucun log';
     el.scrollTop = el.scrollHeight;
   } catch(e) { el.textContent = 'Erreur: ' + e.message; }
@@ -2401,36 +2680,34 @@ var _sleepTimer = null;
 var _sleepEnd   = null;
 var _sleepInterval = null;
 
-function setSleepTimer(minutes) {
-  cancelSleepTimer(false);
-  _sleepEnd = Date.now() + minutes * 60 * 1000;
+var _sleepPose = 0;   // moment où CET écran a réglé la minuterie
 
-  // Mettre à jour les boutons
-  document.querySelectorAll('.speed-btn').forEach(b => {
-    if (['15m','30m','45m','60m'].includes(b.textContent)) b.classList.remove('active');
-  });
-
+// Affiche le temps restant (barre du bas) jusqu'à « fin ».
+function compterJusqua(fin) {
+  if (_sleepInterval) clearInterval(_sleepInterval);
+  _sleepEnd = fin;
   const btn = document.getElementById('sleep-cancel');
   if (btn) btn.style.display = 'inline-flex';
-
-  // Compte à rebours
-  _sleepInterval = setInterval(() => {
-    const remaining = Math.max(0, _sleepEnd - Date.now());
-    const mins = Math.floor(remaining / 60000);
-    const secs = Math.floor((remaining % 60000) / 1000);
+  const lbl = document.getElementById('pb-sleep-label');
+  if (lbl) lbl.classList.add('actif');
+  const tic = () => {
+    const r = Math.max(0, _sleepEnd - Date.now());
     const el = document.getElementById('sleep-countdown');
-    if (el) el.textContent = `${mins}:${secs.toString().padStart(2,'0')}`;
-    if (remaining <= 0) {
-      // C'est la box qui arrête la lecture (en baissant le son) : ici on n'affiche que le compte.
-      clearInterval(_sleepInterval);
-      cancelSleepTimer(false);
-      toast('💤 Bonne nuit !');
-    }
-  }, 1000);
+    if (el) el.textContent = ' ' + fmtTime(r / 1000);
+    // C'est la box qui arrête la lecture (en baissant le son) : ici on n'affiche que le compte.
+    if (r <= 0) { cancelSleepTimer(false); toast('💤 Bonne nuit !'); }
+  };
+  tic();
+  _sleepInterval = setInterval(tic, 1000);
+}
 
+function setSleepTimer(minutes) {
+  closeSleepPopup();
+  _sleepPose = Date.now();
+  compterJusqua(Date.now() + minutes * 60 * 1000);
   // La minuterie tourne sur la box : elle marche même si cet écran se met en veille.
-  api('POST', '/player/sleep', {minutes}).catch(e => toast('Erreur minuterie: ' + e.message));
-  toast(`💤 Arrêt dans ${minutes} minutes`);
+  api('POST', '/player/sleep', {minutes}).catch(e => { cancelSleepTimer(false); toast('Erreur minuterie: ' + e.message); });
+  toast(minutes >= 60 ? `💤 Arrêt dans ${fmtTime(minutes * 60)}` : `💤 Arrêt dans ${minutes} minutes`);
 }
 
 // La box connaît le temps restant : on se recale dessus (minuterie lancée ailleurs).
@@ -2438,19 +2715,9 @@ function syncSleepFromStatus(st) {
   if (!st || typeof st.sommeil !== 'number') return;
   if (st.sommeil > 0) {
     const fin = Date.now() + st.sommeil * 1000;
-    if (!_sleepEnd || Math.abs(fin - _sleepEnd) > 5000) {
-      if (_sleepInterval) clearInterval(_sleepInterval);
-      _sleepEnd = fin;
-      const btn = document.getElementById('sleep-cancel');
-      if (btn) btn.style.display = 'inline-flex';
-      _sleepInterval = setInterval(() => {
-        const r = Math.max(0, _sleepEnd - Date.now());
-        const el = document.getElementById('sleep-countdown');
-        if (el) el.textContent = `${Math.floor(r/60000)}:${Math.floor((r%60000)/1000).toString().padStart(2,'0')}`;
-        if (r <= 0) cancelSleepTimer(false);
-      }, 1000);
-    }
-  } else if (_sleepEnd) {
+    if (!_sleepEnd || Math.abs(fin - _sleepEnd) > 5000) compterJusqua(fin);
+  } else if (_sleepEnd && Date.now() - _sleepPose > 4000) {
+    // (Pas juste après un réglage ici : la box ne l'a peut-être pas encore reçu.)
     cancelSleepTimer(false);
   }
 }
@@ -2460,9 +2727,30 @@ function cancelSleepTimer(prevenirLaBox = true) {
   if (_sleepInterval) clearInterval(_sleepInterval);
   _sleepTimer = null;
   _sleepEnd   = null;
+  _sleepPose  = 0;
   const btn = document.getElementById('sleep-cancel');
   if (btn) btn.style.display = 'none';
+  const el = document.getElementById('sleep-countdown');
+  if (el) el.textContent = '';
+  const lbl = document.getElementById('pb-sleep-label');
+  if (lbl) lbl.classList.remove('actif');
+  if (prevenirLaBox) closeSleepPopup();
 }
+
+function toggleSleepPopup(e) {
+  if (e) e.stopPropagation();
+  closeSpeedPopup();
+  const p = document.getElementById('sleep-popup');
+  if (p) p.classList.toggle('show');
+}
+function closeSleepPopup() {
+  const p = document.getElementById('sleep-popup');
+  if (p) p.classList.remove('show');
+}
+document.addEventListener('click', e => {
+  const p = document.getElementById('sleep-popup');
+  if (p && p.classList.contains('show') && !p.contains(e.target)) p.classList.remove('show');
+});
 
 // ══════════════════════════════════════════════════════
 // VITESSE DE LECTURE
@@ -2541,6 +2829,7 @@ function changeVolume(delta) {
 
 function toggleSpeedPopup(e) {
   if (e) e.stopPropagation();
+  closeSleepPopup();
   const popup = document.getElementById('speed-popup');
   if (popup) popup.classList.toggle('show');
 }
@@ -2564,7 +2853,7 @@ function updateSpeedUI() {
   if (lbl) lbl.textContent = _currentSpeed + 'x';
   const cur = document.getElementById('sp-current');
   if (cur) cur.textContent = _currentSpeed + 'x';
-  document.querySelectorAll('.sp-preset').forEach(b => {
+  document.querySelectorAll('#speed-popup .sp-preset').forEach(b => {
     b.classList.toggle('active', parseFloat(b.textContent) === _currentSpeed);
   });
 }
@@ -2616,7 +2905,7 @@ function showSettingsTab(tab) {
 
 function saveToken(v) {
   token = v.trim();
-  localStorage.setItem('ab_token', token);
+  try { localStorage.setItem('ab_token', token); } catch(e) {}
 }
 
 function initSettings() {
@@ -2628,31 +2917,85 @@ function initSettings() {
   initEQ();
   loadHAConfig();
   loadWebhooks();
+  loadNASMounts();
 }
 
+// Sur l'écran de la box, le code n'est pas demandé (la box se fait confiance) : plus
+// besoin de le taper avant d'enregistrer. Depuis un téléphone, la box répond
+// « Token invalide » s'il manque.
 async function saveABS() {
-  if (!token) { toast('Entrez d\'abord votre token'); return; }
   try {
     await api('POST', '/settings/abs', {
-      url: document.getElementById('cfg-abs-url').value,
-      api_key: document.getElementById('cfg-abs-key').value
+      url: document.getElementById('cfg-abs-url').value.trim(),
+      api_key: document.getElementById('cfg-abs-key').value.trim()
     });
+    document.getElementById('cfg-abs-key').value = '';
+    _absCache = null;
     toast('✓ Audiobookshelf configuré');
   } catch(e) { toast('Erreur: ' + e.message); }
 }
 
+// « //192.168.178.200/musique », « \\NAS\musique », « smb://nas/musique/rock » → adresse + partage
+function decouperCheminNAS(chemin) {
+  const t = String(chemin || '').trim().replace(/^smb:/i, '').replace(/\\/g, '/')
+    .replace(/^\/+/, '').replace(/\/+$/, '');
+  const i = t.indexOf('/');
+  if (i <= 0 || i === t.length - 1) return null;
+  return {host: t.slice(0, i), share: t.slice(i + 1)};
+}
+
+// Avant (1.5), l'adresse, le partage et le point de montage recevaient tous le même
+// texte : le montage était toujours refusé.
 async function mountNAS() {
-  if (!token) { toast('Entrez d\'abord votre token'); return; }
+  const p = decouperCheminNAS(document.getElementById('cfg-nas-path').value);
+  if (!p) { toast('Chemin attendu : //adresse-du-nas/partage'); return; }
+  const nom = p.share.split('/').pop().replace(/[^A-Za-z0-9._-]/g, '_') || 'nas';
+  toast('Montage du NAS…');
   try {
     await api('POST', '/settings/nas/mount', {
-      host:        document.getElementById('cfg-nas-path').value,
-      share:       document.getElementById('cfg-nas-path').value,
-      mount_point: document.getElementById('cfg-nas-path').value,
-      username:    document.getElementById('cfg-nas-user').value,
+      host:        p.host,
+      share:       p.share,
+      mount_point: '/opt/jv/nas/' + nom,
+      username:    document.getElementById('cfg-nas-user').value.trim(),
       password:    document.getElementById('cfg-nas-pass').value,
     });
-    toast('✓ NAS monté');
+    document.getElementById('cfg-nas-pass').value = '';
+    toast(`✓ NAS monté (dossier « ${nom} » dans Musique NAS)`);
+    loadNASMounts();
   } catch(e) { toast('Erreur: ' + e.message); }
+}
+
+async function loadNASMounts() {
+  const el = document.getElementById('nas-mounts');
+  if (!el) return;
+  try {
+    const ms = await api('GET', '/nas/mounts');
+    el.innerHTML = ms.map(m => `
+      <div class="nas-montage">
+        <b title="${m.mounted ? 'Monté' : 'Pas monté'}">${m.mounted ? '🟢' : '⚪'}</b>
+        <span>//${esc(m.host)}/${esc(m.share)} → ${esc(m.mount_point)}</span>
+        <button class="btn btn-danger btn-sm" onclick="umountNAS(${jsArg(m.mount_point)})">Démonter</button>
+      </div>`).join('');
+  } catch(e) { el.innerHTML = ''; }
+}
+
+async function umountNAS(dossier) {
+  if (!confirm('Démonter ce partage ? Il ne sera plus remonté au démarrage de la box.')) return;
+  try {
+    await api('POST', `/settings/nas/umount?mount_point=${encodeURIComponent(dossier)}`);
+    toast('Partage démonté');
+    loadNASMounts();
+  } catch(e) { toast('Erreur: ' + e.message); }
+}
+
+// Sur la box elle-même, la box donne son code à l'écran : il est retenu pour les
+// réglages (avant, il fallait le recopier à la main sur l'écran tactile).
+async function recupererCodeSurLaBox() {
+  if (token) return;
+  try {
+    const d = await fetch('/api/settings/setup-info', {cache: 'no-store'}).then(r => r.json());
+    if (d && d.token) saveToken(d.token);
+  } catch(e) {}
 }
 
 
@@ -2707,13 +3050,6 @@ document.addEventListener('click', (ev) => {
 });
 appliquerTheme(lireTheme());
 
-// ══════════════════════════════════════════════════════
-// Init
-// ══════════════════════════════════════════════════════
-connectWS();
-loadRecent();
-initScreensaver();
-initClockWeather();
 
 // ══════════════════════════════════════════════════════
 // ÉCRAN DE VEILLE
@@ -2770,11 +3106,11 @@ function updateScreensaverContent() {
   document.getElementById('ss-title').textContent  = title;
   document.getElementById('ss-author').textContent = author;
 
-  // Pochette en fond
-  if (currentItem) {
-    document.getElementById('ss-cover').style.backgroundImage =
-      `url('/api/abs/cover/${currentItem.id}')`;
-  }
+  // Pochette en fond : celle de ce qui joue (avant : celle du dernier livre ouvert,
+  // même pendant une radio).
+  const fond = pState.item_id ? `/api/abs/cover/${encodeURIComponent(pState.item_id)}`
+             : (/^https?:\/\//.test(pState.cover_url || '') ? pState.cover_url : '');
+  document.getElementById('ss-cover').style.backgroundImage = fond ? `url(${JSON.stringify(fond)})` : 'none';
 
   // Progression
   if (pState.duration > 0) {
@@ -2789,6 +3125,18 @@ function updateScreensaverContent() {
 setInterval(() => {
   if (_ssActive) updateScreensaverContent();
 }, 2000);
+
+// ══════════════════════════════════════════════════════
+// Démarrage — tout à la fin : avant, il était lancé avant la déclaration des variables
+// de l'écran de veille, qui remettaient ensuite son minuteur à zéro.
+// ══════════════════════════════════════════════════════
+recupererCodeSurLaBox();
+connectWS();
+loadRecent();
+initScreensaver();
+initClockWeather();
+surveillerVersion();
+setInterval(surveillerVersion, 60 * 1000);
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});

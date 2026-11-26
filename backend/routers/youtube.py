@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import asyncio, json, shutil, logging
+from services import reseau
 
 router = APIRouter(prefix="/youtube", tags=["youtube"])
 logger = logging.getLogger("youtube")
@@ -27,11 +28,15 @@ async def _run_ytdlp(args: list, timeout: int = 30) -> str:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-    except asyncio.TimeoutError:
-        raise HTTPException(status_code=504, detail="yt-dlp timeout — vérifiez votre connexion")
     except FileNotFoundError:
         raise HTTPException(status_code=503, detail="yt-dlp introuvable")
+    try:
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+    except asyncio.TimeoutError:
+        # Avant, yt-dlp continuait à tourner en arrière-plan après l'abandon.
+        proc.kill()
+        await proc.wait()
+        raise HTTPException(status_code=504, detail="yt-dlp timeout — vérifiez votre connexion")
 
     if proc.returncode != 0:
         err = stderr.decode(errors="replace")[:300]
@@ -53,6 +58,11 @@ async def resolve(req: YoutubeRequest):
     _require_ytdlp()
     if not req.url:
         raise HTTPException(status_code=400, detail="URL manquante")
+    # Jamais une adresse de la box elle-même (voir services/reseau.py).
+    try:
+        await reseau.verifier_adresse(req.url)
+    except reseau.AdresseRefusee as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     fmt = "bestaudio/best" if req.audio_only else "best"
     # « %(...)j » : yt-dlp écrit lui-même un JSON correct. Avant, un titre avec des

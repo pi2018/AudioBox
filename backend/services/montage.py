@@ -64,9 +64,14 @@ def adresses(uri: str) -> list[str]:
 
 
 def segments_abs(base: str, item_id: str, fichiers: list[dict]) -> list[tuple[str, float]]:
-    """Les fichiers audio d'un livre Audiobookshelf, dans l'ordre, avec leur durée."""
-    tries = sorted(fichiers, key=lambda f: (f.get("index") if f.get("index") is not None else 10**9,
-                                          str(f.get("metadata", {}).get("filename", ""))))
+    """
+    Les fichiers audio d'un livre Audiobookshelf, dans l'ordre, avec leur durée.
+    Sans les fichiers qu'Audiobookshelf a écartés (« exclure » ou illisibles) : ils ne
+    font pas partie du livre, et leur durée décalerait les chapitres.
+    """
+    gardes = [f for f in fichiers if not f.get("exclude") and not f.get("invalid")] or fichiers
+    tries = sorted(gardes, key=lambda f: (f.get("index") if f.get("index") is not None else 10**9,
+                                        str(f.get("metadata", {}).get("filename", ""))))
     sortie = []
     for f in tries:
         ino = f.get("ino", f.get("id", ""))

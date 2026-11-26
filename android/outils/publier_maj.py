@@ -86,6 +86,9 @@ def requete(methode, chemin, donnees=None, jeton=None, entetes=None, delai=120):
             return e.code, json.loads(texte)
         except Exception:
             return e.code, {"message": texte[:300]}
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        # Serveur injoignable : un message clair au lieu d'une trace Python.
+        return 0, {"message": f"serveur injoignable ({e})"}
 
 
 def assurer_collection(jeton, nom, champs, regles=None, index=None):

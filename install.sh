@@ -1,5 +1,6 @@
 #!/bin/bash
-set -e
+# Installation (et mise à jour) de l'AudioBox : sudo bash install.sh
+set -eE
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'
 CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
 log()   { echo -e "${GREEN}[OK]${NC} $*"; }
@@ -16,7 +17,13 @@ export DEBIAN_FRONTEND=noninteractive
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_DIR="/opt/jv"
 USER_NAME="${SUDO_USER:-jv}"
-USER_HOME="/home/${USER_NAME}"
+[[ "$USER_NAME" == "root" ]] && USER_NAME="jv"
+if ! id "$USER_NAME" >/dev/null 2>&1; then
+    echo "Utilisateur « $USER_NAME » introuvable : lancer depuis le compte de la box avec sudo"
+    exit 1
+fi
+USER_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
+USER_UID="$(id -u "$USER_NAME")"
 echo -e "${CYAN}${BOLD}=== AudioBox - Installation ===${NC}"
 echo "  Utilisateur : ${USER_NAME}"
 
@@ -41,13 +48,31 @@ pip3 install --break-system-packages -q --upgrade yt-dlp >> "$JOURNAL_INSTALL" 2
 log "yt-dlp installe"
 
 title "Deploiement des fichiers"
-mkdir -p "$INSTALL_DIR"
-cp -r "$SCRIPT_DIR/backend" "$INSTALL_DIR/"
-cp -r "$SCRIPT_DIR/frontend" "$INSTALL_DIR/"
-[ -d "$SCRIPT_DIR/system" ] && cp -r "$SCRIPT_DIR/system" "$INSTALL_DIR/"
-cp "$SCRIPT_DIR/version.json" "$INSTALL_DIR/" 2>/dev/null || true
-mkdir -p "$INSTALL_DIR/config" "$INSTALL_DIR/logs" "$INSTALL_DIR/nas"
-chown -R "$USER_NAME:$USER_NAME" "$INSTALL_DIR"
+# Chaque dossier est REMPLACE en entier (copie neuve, puis echange) : avant, la copie
+# par-dessus laissait les anciens fichiers, et un script en cours d'execution pouvait
+# etre reecrit sous ses pieds.
+deployer() {
+    local nom="${1:?}"
+    [ -d "$SCRIPT_DIR/$nom" ] || return 0
+    rm -rf "${INSTALL_DIR:?}/$nom.nouveau" "${INSTALL_DIR:?}/$nom.ancien"
+    cp -r "$SCRIPT_DIR/$nom" "$INSTALL_DIR/$nom.nouveau"
+    find "$INSTALL_DIR/$nom.nouveau" -name "__pycache__" -type d -prune -exec rm -rf {} +
+    if [ -e "$INSTALL_DIR/$nom" ]; then
+        mv "$INSTALL_DIR/$nom" "$INSTALL_DIR/$nom.ancien"
+    fi
+    mv "$INSTALL_DIR/$nom.nouveau" "$INSTALL_DIR/$nom"
+    rm -rf "${INSTALL_DIR:?}/$nom.ancien"
+}
+mkdir -p "$INSTALL_DIR" "$INSTALL_DIR/config" "$INSTALL_DIR/logs" "$INSTALL_DIR/nas"
+deployer backend
+deployer frontend
+deployer system
+cp "$SCRIPT_DIR/version.json" "$INSTALL_DIR/version.json"
+# Pas de chown -R sur tout /opt/jv : il descendait aussi dans les partages du NAS
+# montes sous /opt/jv/nas (lent, et refuse par le NAS : l'installation echouait).
+chown "$USER_NAME:$USER_NAME" "$INSTALL_DIR" "$INSTALL_DIR/version.json" "$INSTALL_DIR/nas"
+chown -R "$USER_NAME:$USER_NAME" "$INSTALL_DIR/backend" "$INSTALL_DIR/frontend" \
+    "$INSTALL_DIR/config" "$INSTALL_DIR/logs"
 # Les scripts lances avec sudo appartiennent a root et ne sont PAS modifiables
 # par l'utilisateur : sinon il pourrait les reecrire et devenir root.
 chown -R root:root "$INSTALL_DIR/system"
@@ -77,8 +102,8 @@ Group=$USER_NAME
 WorkingDirectory=$INSTALL_DIR/backend
 Environment=PYTHONUNBUFFERED=1
 Environment=HOME=$USER_HOME
-Environment=XDG_RUNTIME_DIR=/run/user/1000
-Environment=PIPEWIRE_RUNTIME_DIR=/run/user/1000
+Environment=XDG_RUNTIME_DIR=/run/user/$USER_UID
+Environment=PIPEWIRE_RUNTIME_DIR=/run/user/$USER_UID
 ExecStartPre=-/usr/bin/amixer set PCM 100%
 ExecStartPre=-/usr/bin/amixer set Master 100%
 ExecStartPre=/bin/sleep 2
@@ -94,7 +119,28 @@ WantedBy=multi-user.target
 EOF
 systemctl daemon-reload
 systemctl enable jv-backend > /dev/null 2>&1
+# Pour lire les messages du serveur depuis Parametres > Systeme > Logs.
+usermod -aG systemd-journal "$USER_NAME" 2>/dev/null || true
 log "Service backend installe"
+
+title "Partages du NAS au demarrage"
+install -d -m 700 /etc/audiobox /etc/audiobox/nas
+cat > /etc/systemd/system/audiobox-nas.service << EOF
+[Unit]
+Description=AudioBox - remonte les partages du NAS
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=$INSTALL_DIR/system/remonter-nas.sh
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl daemon-reload
+systemctl enable audiobox-nas > /dev/null 2>&1 || true
+log "Partages du NAS remontes a chaque demarrage"
 
 title "Permissions sudoers"
 cat > /etc/sudoers.d/audiobox << SUDOEOF
@@ -197,8 +243,33 @@ systemctl disable --now audiobox-bluetooth > /dev/null 2>&1 || true
 rm -f /etc/systemd/system/audiobox-bluetooth.service
 
 title "Demarrage backend"
-systemctl restart jv-backend 2>/dev/null || true
-sleep 6
+NOUVELLE_V="$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["version"])' "$INSTALL_DIR/version.json" 2>/dev/null || echo "?")"
+version_qui_tourne() {
+    curl -fsS --max-time 3 http://127.0.0.1:8000/api/system/version 2>/dev/null \
+        | python3 -c 'import json, sys; print(json.load(sys.stdin).get("en_cours", ""))' 2>/dev/null || true
+}
+# (AUDIOBOX_CGROUP : seulement pour les essais.)
+if grep -qs "jv-backend.service" "${AUDIOBOX_CGROUP:-/proc/self/cgroup}"; then
+    # Lance de l'interieur du serveur (bouton « Mettre a jour » des versions 1.4 et 1.5) :
+    # le redemarrer maintenant arreterait aussi cette installation. Il redemarre a part,
+    # dans 5 secondes ; la box redemarre ensuite toute seule.
+    systemd-run --quiet --on-active=5 --unit="audiobox-relance-$(date +%s)" \
+        /usr/bin/systemctl restart jv-backend || true
+    warn "Serveur relance dans quelques secondes"
+else
+    systemctl restart jv-backend
+    EN_COURS=""
+    for _ in $(seq 1 45); do
+        EN_COURS="$(version_qui_tourne)"
+        [ "$EN_COURS" = "$NOUVELLE_V" ] && break
+        sleep 2
+    done
+    if [ "$EN_COURS" = "$NOUVELLE_V" ]; then
+        log "Serveur demarre (version $NOUVELLE_V)"
+    else
+        warn "Le serveur ne repond pas encore avec la version $NOUVELLE_V (voir : journalctl -u jv-backend)"
+    fi
+fi
 # Le token n'est plus ecrit dans le journal : on le lit dans son fichier (600).
 TOKEN=$(cat "$INSTALL_DIR/config/.dashboard_token_v2" 2>/dev/null || echo "voir l'ecran de la box")
 IP=$(hostname -I | awk '{print $1}')
@@ -206,7 +277,7 @@ install -m 600 -o "$USER_NAME" -g "$USER_NAME" /dev/null "$USER_HOME/audiobox-to
 echo "$TOKEN" > "$USER_HOME/audiobox-token.txt"
 echo ""
 echo -e "${CYAN}========================================================${NC}"
-echo -e "   ${BOLD}AudioBox installe avec succes !${NC}"
+echo -e "   ${BOLD}AudioBox $NOUVELLE_V installe avec succes !${NC}"
 echo -e "${CYAN}========================================================${NC}"
 echo -e "   Interface : ${GREEN}http://${IP}:8000${NC}"
 echo -e "   Token     : ${YELLOW}${TOKEN}${NC}"

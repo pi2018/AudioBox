@@ -32,7 +32,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             raise UpdateFailed(f"AudioBox injoignable : {err}") from err
 
     coordinateur = DataUpdateCoordinator(
-        hass, _LOGGER, name=DOMAIN, update_method=lire_etat,
+        hass, _LOGGER, config_entry=entry, name=DOMAIN, update_method=lire_etat,
         update_interval=timedelta(seconds=INTERVALLE),
     )
     await coordinateur.async_config_entry_first_refresh()

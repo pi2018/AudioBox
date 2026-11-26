@@ -13,12 +13,25 @@ from .api import AudioBoxApi, AudioBoxErreur
 from .const import CONF_TOKEN, DEFAUT_HOTE, DEFAUT_PORT, DOMAIN
 
 
+def nettoyer_hote(texte: str) -> str:
+    """« http://192.168.178.77:8000/ » → « 192.168.178.77 » (on tape souvent l'adresse entière)."""
+    hote = (texte or "").strip()
+    for prefixe in ("http://", "https://"):
+        if hote.lower().startswith(prefixe):
+            hote = hote[len(prefixe):]
+    hote = hote.split("/")[0]
+    if hote.count(":") == 1:          # pas une adresse IPv6
+        hote = hote.split(":")[0]
+    return hote
+
+
 class AudioBoxConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         erreurs: dict[str, str] = {}
         if user_input is not None:
+            user_input = {**user_input, CONF_HOST: nettoyer_hote(user_input[CONF_HOST])}
             api = AudioBoxApi(async_get_clientsession(self.hass), user_input[CONF_HOST],
                               user_input[CONF_PORT], user_input.get(CONF_TOKEN, ""))
             try:

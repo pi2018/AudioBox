@@ -25,6 +25,8 @@ data class Etat(
     val radios: List<String> = emptyList(),
     val sommeil: Int = 0,
     val vitesse: Double = 1.0,
+    /** Quand tout est arrêté : ce que « Lecture » relancerait (dernière écoute). */
+    val dernier: String = "",
 ) {
     val estUnLivre: Boolean get() = origine == "abs" || origine == "podcast"
 
@@ -45,6 +47,7 @@ data class Etat(
                 radios = (0 until (r?.length() ?: 0)).map { r!!.optString(it) }.filter { it.isNotBlank() },
                 sommeil = o.optInt("sommeil", 0),
                 vitesse = o.optDouble("vitesse", 1.0),
+                dernier = o.optString("dernier"),
             )
         }
     }

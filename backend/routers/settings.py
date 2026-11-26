@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, HttpUrl, field_validator
-import subprocess, secrets, os, re, logging
+import asyncio, subprocess, secrets, os, re, logging
 from config import load_config, update_config
 
 router   = APIRouter(prefix="/settings", tags=["settings"])
@@ -85,6 +85,9 @@ class ABSSettings(BaseModel):
         return v.strip()
 
 
+_CONTROLE = re.compile(r"[\x00-\x1f\x7f]")
+
+
 class NASMount(BaseModel):
     host: str
     share: str
@@ -95,6 +98,8 @@ class NASMount(BaseModel):
     @field_validator("mount_point")
     @classmethod
     def validate_mount_point(cls, v):
+        if _CONTROLE.search(v or ""):
+            raise ValueError("Point de montage invalide")
         # realpath : « /mnt/../etc » devenait sinon un montage sur /etc, en root.
         reel = chemin_nas_autorise(v)
         if not reel:
@@ -114,28 +119,52 @@ class NASMount(BaseModel):
     def validate_share(cls, v):
         v = (v or "").strip().strip("/")
         # Une virgule ou un retour à la ligne permettrait d'ajouter des options de montage.
-        if not v or re.search(r"[,\n\r\x00]", v):
+        if not v or "," in v or _CONTROLE.search(v):
             raise ValueError("Nom du partage invalide")
         return v
 
     @field_validator("username")
     @classmethod
     def validate_username(cls, v):
-        if re.search(r"[,=\n\r\x00]", v or ""):
+        if re.search(r"[,=]", v or "") or _CONTROLE.search(v or ""):
             raise ValueError("Nom d'utilisateur invalide")
         return (v or "").strip()
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v):
+        # Il passe sur une ligne : un retour à la ligne le couperait.
+        if re.search(r"[\n\r\x00]", v or ""):
+            raise ValueError("Mot de passe invalide")
+        return v or ""
 
 
 class RadioStation(BaseModel):
     name: str
     url: str
+    favicon: str = ""   # logo (avant : perdu à l'enregistrement)
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v):
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("Nom de la radio vide")
+        return v[:200]
 
     @field_validator("url")
     @classmethod
     def validate_url(cls, v):
+        v = (v or "").strip()
         if not v.startswith("http://") and not v.startswith("https://"):
             raise ValueError("L'URL doit commencer par http:// ou https://")
         return v
+
+    @field_validator("favicon")
+    @classmethod
+    def validate_favicon(cls, v):
+        v = (v or "").strip()
+        return v if v.startswith(("http://", "https://")) else ""
 
 
 class AudioOutput(BaseModel):
@@ -168,9 +197,12 @@ async def mount_nas(data: NASMount, _: bool = Depends(verify_token)):
     try:
         # Le mot de passe passe par l'entrée standard, jamais sur la ligne de commande
         # (qui est visible par tous les programmes de la box avec « ps »).
-        result = subprocess.run(
+        # Dans un fil à part : avant, toute la box (écran, lecture) se figeait pendant
+        # le montage, jusqu'à 20 secondes.
+        result = await asyncio.to_thread(
+            subprocess.run,
             ["sudo", "-n", script, data.host, data.share, data.mount_point, data.username],
-            input=data.password + "\n", capture_output=True, text=True, timeout=20
+            input=data.password + "\n", capture_output=True, text=True, timeout=30
         )
     except subprocess.TimeoutExpired:
         raise HTTPException(status_code=504, detail="Timeout lors du montage NAS")
@@ -202,15 +234,16 @@ async def umount_nas(mount_point: str, _: bool = Depends(verify_token)):
         raise HTTPException(status_code=503, detail="Script de démontage introuvable")
 
     try:
-        result = subprocess.run(
+        result = await asyncio.to_thread(
+            subprocess.run,
             ["sudo", "-n", script, mount_point],
-            capture_output=True, text=True, timeout=10
+            capture_output=True, text=True, timeout=15
         )
     except subprocess.TimeoutExpired:
         raise HTTPException(status_code=504, detail="Timeout lors du démontage")
 
     if result.returncode != 0:
-        raise HTTPException(status_code=500, detail=result.stderr.strip())
+        raise HTTPException(status_code=500, detail=(result.stderr or result.stdout).strip() or "échec")
 
     # Retirer de la config
     mounts = [m for m in load_config().get("nas_mounts", [])
