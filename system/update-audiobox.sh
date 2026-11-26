@@ -41,3 +41,7 @@ echo "$(date) Version installée : $LOCAL_V — nouvelle : $NOUVELLE_V"
 cd "$SRC"
 SUDO_USER="$UTILISATEUR" bash ./install.sh
 echo "$(date) Mise à jour terminée ($NOUVELLE_V)"
+# Redémarrage complet : le serveur ET l'écran repartent sur la nouvelle version.
+# (Relancer seulement le serveur laissait l'ancienne page affichée sur l'écran.)
+sleep 3
+systemctl reboot

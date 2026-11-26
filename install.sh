@@ -197,7 +197,7 @@ systemctl disable --now audiobox-bluetooth > /dev/null 2>&1 || true
 rm -f /etc/systemd/system/audiobox-bluetooth.service
 
 title "Demarrage backend"
-systemctl start jv-backend 2>/dev/null || true
+systemctl restart jv-backend 2>/dev/null || true
 sleep 6
 # Le token n'est plus ecrit dans le journal : on le lit dans son fichier (600).
 TOKEN=$(cat "$INSTALL_DIR/config/.dashboard_token_v2" 2>/dev/null || echo "voir l'ecran de la box")
