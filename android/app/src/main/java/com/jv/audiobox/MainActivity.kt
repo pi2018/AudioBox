@@ -120,7 +120,7 @@ private fun Appli() {
                 Onglet.RADIOS -> EcranRadios(etat, theme, agir, box)
                 Onglet.REGLAGES -> EcranReglages(
                     adresse, theme,
-                    surAdresse = { nouvelle -> Reglages.ecrireAdresse(contexte, nouvelle); adresse = nouvelle.trim() },
+                    surAdresse = { nouvelle -> Reglages.ecrireAdresse(contexte, nouvelle); adresse = Reglages.normaliser(nouvelle) },
                     surTheme = { id -> Reglages.ecrireTheme(contexte, id); themeId = id },
                 )
             }
@@ -190,6 +190,15 @@ private fun EcranLecture(etat: Etat?, theme: Theme, box: AudioBoxApi, agir: (sus
             Spacer(Modifier.height(8.dp))
             Text("Choisis une radio dans l'onglet Radios,\nou lance un livre sur l'écran de la box.",
                 color = Couleurs.doux, fontSize = 14.sp)
+            // La dernière écoute peut repartir d'ici (un livre reprend là où il s'était arrêté).
+            val dernier = etat?.dernier ?: ""
+            if (dernier.isNotBlank()) {
+                Spacer(Modifier.height(26.dp))
+                Rond("▶", 80, theme.accent, theme.encre) { agir { box.lecture() } }
+                Spacer(Modifier.height(10.dp))
+                Text("Reprendre : $dernier", color = Couleurs.texte, fontSize = 15.sp,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
         }
         return
     }
@@ -266,7 +275,8 @@ private fun EcranLecture(etat: Etat?, theme: Theme, box: AudioBoxApi, agir: (sus
             value = volumeGlisse ?: (etat.volume / 100f),
             onValueChange = { volumeGlisse = it },
             onValueChangeFinished = {
-                val v = ((volumeGlisse ?: 0f) * 100).toInt()
+                // Sans valeur du doigt, on garde le volume actuel (avant : 0, le son coupait).
+                val v = ((volumeGlisse ?: (etat.volume / 100f)) * 100).toInt()
                 volumeGlisse = null
                 agir { box.volume(v) }
             },

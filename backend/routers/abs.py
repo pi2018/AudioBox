@@ -87,7 +87,8 @@ async def get_items(lib_id: str, page: int = 0, limit: int = 50):
 
 @router.get("/items/{item_id}")
 async def get_item(item_id: str):
-    return await _abs_get(f"/api/items/{item_id}")
+    # « expanded » : avec l'auteur et la durée (la version courte ne les donne pas).
+    return await _abs_get(f"/api/items/{item_id}", params={"expanded": 1})
 
 
 @router.get("/me/progress/{item_id}")
@@ -142,8 +143,13 @@ async def sync_progress(item_id: str, payload: dict):
 
 @router.get("/me")
 async def get_me():
-    """Récupère le profil utilisateur avec toute la progression."""
-    return await _abs_get("/api/me")
+    """
+    La progression de lecture (livres en cours). Rien d'autre : le profil complet
+    d'Audiobookshelf contient le jeton du compte, et cette page est ouverte à tout le
+    réseau sans code. Avant (1.5), elle le renvoyait tel quel.
+    """
+    me = await _abs_get("/api/me")
+    return {"mediaProgress": me.get("mediaProgress", []) if isinstance(me, dict) else []}
 
 
 @router.get("/chapters/{item_id}")

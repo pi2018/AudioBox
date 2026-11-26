@@ -1,5 +1,5 @@
 {
-  "version": "1.5.0",
+  "version": "1.6.0",
   "date": "2026-11-26",
-  "notes": "Livres audio en plusieurs fichiers, minuterie de sommeil sur la box, vitesse retenue, intégration Home Assistant (lecteur, radios, annonces)"
+  "notes": "Corrections : mise à jour depuis l'écran fiable (vérifiée, avec son résultat), progression des livres plus écrasée en changeant de livre, position qui ne retombe plus à 0, minuterie et vitesse utilisables sur l'écran, chapitres, NAS (montage et remontage au démarrage), annonces Home Assistant, sécurité du code admin"
 }

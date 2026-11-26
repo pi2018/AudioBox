@@ -12,7 +12,31 @@ object Reglages {
         c.getSharedPreferences(FICHIER, Context.MODE_PRIVATE).getString("adresse", ADRESSE_DEFAUT) ?: ADRESSE_DEFAUT
 
     fun ecrireAdresse(c: Context, adresse: String) {
-        c.getSharedPreferences(FICHIER, Context.MODE_PRIVATE).edit().putString("adresse", adresse.trim()).apply()
+        c.getSharedPreferences(FICHIER, Context.MODE_PRIVATE).edit().putString("adresse", normaliser(adresse)).apply()
+    }
+
+    /**
+     * « 192.168.178.77 » → « http://192.168.178.77:8000 ». Sans « http:// », l'appli ne
+     * joignait pas la box ; « http://http://… » et la barre finale sont aussi enlevés.
+     */
+    fun normaliser(adresse: String): String {
+        var a = adresse.trim()
+        var schema = "http"
+        while (true) {
+            val bas = a.lowercase()
+            if (bas.startsWith("http://")) {
+                schema = "http"; a = a.substring(7)
+            } else if (bas.startsWith("https://")) {
+                schema = "https"; a = a.substring(8)
+            } else {
+                break
+            }
+        }
+        a = a.trim('/')
+        if (a.isEmpty()) return ADRESSE_DEFAUT
+        // La box répond sur le port 8000 (une adresse https passe par un relais : on n'y touche pas).
+        if (schema == "http" && !a.contains(':') && !a.contains('/')) a += ":8000"
+        return "$schema://$a"
     }
 
     fun theme(c: Context): String =

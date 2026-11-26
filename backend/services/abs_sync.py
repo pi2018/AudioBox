@@ -107,27 +107,25 @@ async def _sync_loop(item_id: str, audio_manager, attente: float = 8):
                 # Avant, ABS ne recevait jamais « terminé ».
                 if longueur > 0 and dernier_vu >= longueur - FIN:
                     await _send_progress(item_id, longueur, longueur, is_finished=True)
-                wh = _get_webhooks()
-                if wh:
-                    asyncio.create_task(wh.fire("finished", {"item_id": item_id}))
+                    wh = _get_webhooks()
+                    if wh:
+                        wh.lancer(wh.fire("finished", {"item_id": item_id}))
                 break
 
             if position > 0:
                 dernier_vu, longueur = position, duration or longueur
-            # Envoyer seulement si position a avancé d'au moins 1s
-            if position > last_sent + 1:
+            # Envoyer dès que la position a bougé d'au moins 1 s, en avant OU en arrière
+            # (avant : un retour en arrière n'était enregistré qu'une fois l'ancienne
+            # position dépassée).
+            if position > 0 and abs(position - last_sent) >= 1:
                 await _send_progress(item_id, position, duration)
                 last_sent = position
 
         except asyncio.CancelledError:
-            try:
-                state = await audio_manager.get_status()
-                pos = state.get("position", 0)
-                if pos > 0:
-                    await _send_progress(item_id, pos, state.get("duration", 0))
-                    logger.info(f"Position finale envoyée: {pos:.1f}s")
-            except Exception:
-                pass
+            # Rien n'est envoyé ici. Celui qui arrête la synchro (pause, arrêt, autre
+            # livre) envoie lui-même la position finale, AVANT de changer de lecture.
+            # Avant (1.5), en changeant de livre, ce bloc lisait la position du NOUVEAU
+            # livre et l'enregistrait dans l'ancien : sa progression était écrasée.
             break
         except Exception as e:
             logger.error(f"Erreur sync: {e}")
@@ -138,6 +136,20 @@ def start_sync(item_id: str, audio_manager, start_position: float = 0.0, attente
     global _sync_task
     stop_sync()
     _sync_task = asyncio.create_task(_sync_loop(item_id, audio_manager, attente))
+
+
+async def envoyer_position_finale(item_id: str, audio_manager) -> None:
+    """La position où l'on s'arrête, à appeler AVANT d'arrêter ou de changer de lecture."""
+    if not item_id:
+        return
+    try:
+        state = await audio_manager.get_status()
+        if state.get("stopped"):
+            return
+        await _send_progress(item_id, state.get("position", 0), state.get("duration", 0))
+        logger.info(f"Position finale envoyée: {state.get('position', 0):.1f}s")
+    except Exception as e:
+        logger.debug(f"Position finale non envoyée: {e}")
 
 
 def stop_sync():

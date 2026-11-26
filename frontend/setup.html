@@ -151,7 +151,7 @@ body{
     🚀 Lancer AudioBox
   </button>
 
-  <div class="footer">AudioBox v1.4.0 · GNU GPL v3</div>
+  <div class="footer"><span id="version">AudioBox</span> · GNU GPL v3</div>
 </div>
 
 <script>
@@ -169,7 +169,7 @@ async function loadInfo() {
         document.getElementById('token').textContent = 'Déjà configuré (token masqué)';
         document.getElementById('copyBtn').style.display = 'none';
       } else {
-        document.getElementById('token').textContent = data.token || 'Voir les logs';
+        document.getElementById('token').textContent = data.token || 'Voir ~/audiobox-token.txt sur la box';
       }
     } else {
       document.getElementById('token').textContent = 'Indisponible';
@@ -177,6 +177,11 @@ async function loadInfo() {
   } catch(e) {
     document.getElementById('token').textContent = 'Erreur de chargement';
   }
+  // La version vient de la box (avant : « v1.4.0 » écrit en dur).
+  try {
+    const v = await fetch('/api/system/version').then(r => r.json());
+    document.getElementById('version').textContent = 'AudioBox ' + (v.en_cours || v.version || '');
+  } catch(e) {}
 }
 
 function copyToken() {

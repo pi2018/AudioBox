@@ -15,11 +15,13 @@ from homeassistant.components.media_player import (
 from homeassistant.components.media_player.browse_media import async_process_play_media_url
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
+from .api import AudioBoxErreur
 from .const import DOMAIN
 
 FONCTIONS = (
@@ -138,50 +140,50 @@ class AudioBoxLecteur(CoordinatorEntity, MediaPlayerEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         return {"minuterie_sommeil_s": self._etat.get("sommeil", 0),
                 "vitesse": self._etat.get("vitesse", 1.0),
-                "origine": self._etat.get("source", "")}
+                "origine": self._etat.get("source", ""),
+                # Ce que « lecture » relance quand tout est arrêté (dernière écoute).
+                "derniere_ecoute": self._etat.get("dernier", "")}
 
-    async def _puis_rafraichir(self) -> None:
-        await self.coordinator.async_request_refresh()
+    async def _faire(self, action) -> None:
+        """Envoie l'ordre à la box, puis relit son état. Une erreur s'affiche dans HA."""
+        try:
+            await action
+        except AudioBoxErreur as err:
+            raise HomeAssistantError(f"AudioBox : {err}") from err
+        # Relecture immédiate : la version « regroupée » attendait jusqu'à 10 s, et le
+        # bouton lecture/pause de Home Assistant restait faux pendant ce temps.
+        await self.coordinator.async_refresh()
 
     async def async_media_play(self) -> None:
-        await self._api.lecture()
-        await self._puis_rafraichir()
+        # Si tout est arrêté, la box relance la dernière écoute.
+        await self._faire(self._api.lecture())
 
     async def async_media_pause(self) -> None:
-        await self._api.pause()
-        await self._puis_rafraichir()
+        await self._faire(self._api.pause())
 
     async def async_media_stop(self) -> None:
-        await self._api.stop()
-        await self._puis_rafraichir()
+        await self._faire(self._api.stop())
 
     async def async_set_volume_level(self, volume: float) -> None:
-        await self._api.volume(round(volume * 100))
-        await self._puis_rafraichir()
+        await self._faire(self._api.volume(round(volume * 100)))
 
     async def async_volume_up(self) -> None:
-        await self._api.volume((self._etat.get("volume") or 0) + 5)
-        await self._puis_rafraichir()
+        await self._faire(self._api.volume((self._etat.get("volume") or 0) + 5))
 
     async def async_volume_down(self) -> None:
-        await self._api.volume((self._etat.get("volume") or 0) - 5)
-        await self._puis_rafraichir()
+        await self._faire(self._api.volume((self._etat.get("volume") or 0) - 5))
 
     async def async_media_seek(self, position: float) -> None:
-        await self._api.aller_a(position)
-        await self._puis_rafraichir()
+        await self._faire(self._api.aller_a(position))
 
     async def async_media_next_track(self) -> None:
-        await self._api.suivant()
-        await self._puis_rafraichir()
+        await self._faire(self._api.suivant())
 
     async def async_media_previous_track(self) -> None:
-        await self._api.precedent()
-        await self._puis_rafraichir()
+        await self._faire(self._api.precedent())
 
     async def async_select_source(self, source: str) -> None:
-        await self._api.radio(source)
-        await self._puis_rafraichir()
+        await self._faire(self._api.radio(source))
 
     async def async_browse_media(self, media_content_type: str | None = None,
                                  media_content_id: str | None = None) -> BrowseMedia:
@@ -198,7 +200,6 @@ class AudioBoxLecteur(CoordinatorEntity, MediaPlayerEntity):
         # Une adresse relative de Home Assistant devient une adresse complète, joignable par la box.
         url = async_process_play_media_url(self.hass, media_id)
         if kwargs.get(ATTR_MEDIA_ANNOUNCE):
-            await self._api.annonce(url)
+            await self._faire(self._api.annonce(url))
         else:
-            await self._api.lire_adresse(url)
-        await self._puis_rafraichir()
+            await self._faire(self._api.lire_adresse(url))

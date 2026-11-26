@@ -42,3 +42,33 @@ async def test_lecteur_cree_et_pilote(hass: HomeAssistant, socket_enabled) -> No
                                    blocking=True)
     await hass.async_block_till_done()
     assert hass.states.get("media_player.audiobox").attributes["volume_level"] == 0.42
+
+
+@pytest.mark.allow_hosts(["127.0.0.1"])
+async def test_source_arret_puis_lecture_reprend(hass: HomeAssistant, socket_enabled) -> None:
+    """Choisir une radio, arrêter, puis « lecture » : la box relance la dernière écoute."""
+    assert await async_setup_component(hass, "media_source", {})
+    entree = MockConfigEntry(domain=DOMAIN, unique_id=f"127.0.0.1:{PORT}",
+                             data={CONF_HOST: "127.0.0.1", CONF_PORT: PORT, CONF_TOKEN: ""})
+    entree.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entree.entry_id)
+    await hass.async_block_till_done()
+
+    async def appeler(service, **donnees):
+        await hass.services.async_call("media_player", service,
+                                       {"entity_id": "media_player.audiobox", **donnees}, blocking=True)
+        await hass.async_block_till_done()
+        return hass.states.get("media_player.audiobox")
+
+    etat = await appeler("select_source", source="FIP")
+    assert etat.state == "playing"
+    assert etat.attributes["source"] == "FIP"
+    assert etat.attributes["media_title"] == "FIP"
+
+    etat = await appeler("media_stop")
+    assert etat.state == "idle"
+    assert etat.attributes["derniere_ecoute"] == "FIP"
+
+    etat = await appeler("media_play")
+    assert etat.state == "playing" and etat.attributes["media_title"] == "FIP"
+    await appeler("media_stop")
