@@ -1,0 +1,69 @@
+name: Compiler l'appli AudioBox
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ "android/**", ".github/workflows/android.yml" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Installer Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+
+      # La clé de signature est dans les secrets (le dépôt est public). Elle ne doit
+      # jamais changer : sinon les mises à jour ne s'installeront plus par-dessus.
+      - name: Préparer la clé de signature
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::Secret ANDROID_KEYSTORE_B64 absent : impossible de signer l'appli."
+            exit 1
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/audiobox.jks"
+
+      - name: Compiler l'APK
+        env:
+          KEYSTORE_FILE: ${{ runner.temp }}/audiobox.jks
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Renommer l'APK
+        run: cp app/build/outputs/apk/release/app-release.apk AudioBox-${{ github.run_number }}.apk
+
+      - name: Publier l'APK dans Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: app-${{ github.run_number }}
+          name: Appli AudioBox (compilation ${{ github.run_number }})
+          files: android/AudioBox-${{ github.run_number }}.apk
+
+      - name: Envoyer la mise à jour dans « Mes Apps »
+        continue-on-error: true
+        env:
+          PB_URL: ${{ secrets.PB_URL }}
+          PB_EMAIL: ${{ secrets.PB_EMAIL }}
+          PB_PASSWORD: ${{ secrets.PB_PASSWORD }}
+          APK: AudioBox-${{ github.run_number }}.apk
+          VERSION_CODE: ${{ github.run_number }}
+        run: python3 outils/publier_maj.py
